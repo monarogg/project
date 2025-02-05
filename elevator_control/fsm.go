@@ -1,7 +1,8 @@
-package main
+package elevator_control
 
 import (
 	"project/elevio"
+	"project/requests"
 	"time"
 )
 
