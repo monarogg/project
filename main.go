@@ -18,13 +18,13 @@ func main() {
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
 
-	//channels for broadcastin elevator state
+	//channels for broadcasting elevator state
 	txElevatorState := make(chan NetElevator)
     rxElevatorState := make(chan NetElevator)
 
 	// start the transmitter/receiver
 	go bcast.Transmitter(17657, txElevatorState)
-    go bcast.Receiver(17657, rxElevatorState)
+    go bcast.Receiver(17658, rxElevatorState)
 
 	elevator := initializeFSM()
 
@@ -50,9 +50,9 @@ func main() {
 
 	go func() {
 		for {
-			st := <-rxElevatorState
-			knownElevators[st.ID] = st
-			fmt.Println("Received state from:", st.ID, "Floor:", st.CurrentFloor)
+			tempState := <-rxElevatorState
+			knownElevators[tempState.ID] = tempState
+			//fmt.Println("Received state from:", tempState.ID, "Floor:", tempState.CurrentFloor)
 		}
 	}()	
 
