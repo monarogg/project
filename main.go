@@ -1,9 +1,10 @@
 package main
 
 import (
-	"project/elevio"
-	"project/network/conn"
 	"fmt"
+	"project/elevio"
+	"project/network/bcast"
+	"time"
 )
 
 func main() {
@@ -17,7 +18,43 @@ func main() {
 	drv_obstr := make(chan bool)
 	drv_stop := make(chan bool)
 
+	//channels for broadcastin elevator state
+	txElevatorState := make(chan NetElevator)
+    rxElevatorState := make(chan NetElevator)
+
+	// start the transmitter/receiver
+	go bcast.Transmitter(17657, txElevatorState)
+    go bcast.Receiver(17657, rxElevatorState)
+
 	elevator := initializeFSM()
+
+	go func()  {
+		myID := "Elev1"
+
+		for {
+			currentState := NetElevator{
+				ID:				myID,
+				CurrentFloor:	elevator.CurrentFloor,
+				Direction:    	elevator.Direction,
+                State:        	elevator.State,
+                Orders:       	elevator.Orders,
+                StopActive:   	elevator.StopActive,
+			}
+			txElevatorState <- currentState
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+
+	knownElevators := make(map[string]NetElevator)
+
+	go func() {
+		for {
+			st := <-rxElevatorState
+			knownElevators[st.ID] = st
+			fmt.Println("Received state from:", st.ID, "Floor:", st.CurrentFloor)
+		}
+	}()	
 
 	go elevio.PollButtons(drv_buttons)
 	go elevio.PollFloorSensor(drv_floors)
