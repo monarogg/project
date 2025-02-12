@@ -5,6 +5,7 @@ import (
 	"project/elevio"
 	"project/network/bcast"
 	"time"
+	"flag"
 )
 
 func main() {
@@ -29,7 +30,11 @@ func main() {
 	elevator := initializeFSM()
 
 	go func()  {
-		myID := "Elev1"
+		idFlag := flag.String("id", "ElevDefault", "Unique ID for this elevator")
+    	flag.Parse()
+
+
+		myID := *idFlag
 
 		for {
 			currentState := NetElevator{
