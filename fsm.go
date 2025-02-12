@@ -13,6 +13,16 @@ const (
 	DoorOpen ElevatorState = 2
 )
 
+type NetElevator struct {
+	ID 			 string
+	CurrentFloor int
+	Direction    elevio.MotorDirection
+	State        ElevatorState
+	Orders       [4][3]bool
+	Config       ElevatorConfig
+	StopActive   bool
+}
+
 type Elevator struct {
 	CurrentFloor int
 	Direction    elevio.MotorDirection
@@ -29,7 +39,7 @@ type ElevatorConfig struct {
 func initializeFSM() Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := Elevator{
-		CurrentFloor: 0,              //starter i første etasje
+		CurrentFloor: -1,              //starter i ukjent etasje(?) **********************
 		Direction:    elevio.MD_Stop, // motoren skal stå i ro
 		State:        Idle,           //starter som inaktiv
 		Orders:       [4][3]bool{},   //ingen bestillinger
