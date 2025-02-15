@@ -26,6 +26,16 @@ type Elevator struct {
 	StopActive   bool
 }
 
+type NetElevator struct {
+	ID           string
+	CurrentFloor int
+	Direction    elevio.MotorDirection
+	State        ElevatorState
+	Orders       [4][3]bool
+	Config       ElevatorConfig
+	StopActive   bool
+}
+
 type ElevatorConfig struct {
 	DoorOpenDuration time.Duration
 }
