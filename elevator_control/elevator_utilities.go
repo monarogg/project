@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func initializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
+func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := datatypes.Elevator{
 		CurrentFloor: 0,              //starter i første etasje
