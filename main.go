@@ -1,16 +1,15 @@
 package main
 
 import (
-	"project/elevatorcontrol"
 	"flag"
 	"fmt"
+	"project/datatypes"
+	"project/elevator_control"
 	"project/elevio"
 	"project/network/bcast"
 	"project/network/peers"
 	"time"
-	"project/datatypes"
 )
-
 
 func main() {
 
@@ -41,7 +40,7 @@ func main() {
 	go bcast.Transmitter(17657, txElevatorState)
 	go bcast.Receiver(17657, rxElevatorState)
 
-	elevator := elevatorcontrol.InitializeFSM()
+	elevator := elevator_control.InitializeFSM()
 	knownElevators := make(map[string]datatypes.NetElevator)
 
 	//Heratbeat broadcasting state,
@@ -85,10 +84,10 @@ func main() {
 		select {
 		case a := <-drv_buttons: // a tilsvarer knappetrykket
 			// håndtere trykk på knapper
-			elevatorcontrol.OnRequestButtonPress(&elevator, a.Floor, a.Button)
+			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button)
 
 		case a := <-drv_floors: // a blir etasjen man ankommer
-			elevatorcontrol.OnFloorArrival(&elevator, a)
+			elevator_control.OnFloorArrival(&elevator, a)
 
 		case a := <-drv_obstr: // håndterer dersom obstruction blir aktivert
 			if a {
@@ -99,10 +98,10 @@ func main() {
 			}
 
 		case <-drv_stop: // håndterer dersom stop blir trykket
-			elevatorcontrol.OnStopButtonPress(&elevator)
+			elevator_control.OnStopButtonPress(&elevator)
 
 		}
 
-		elevatorcontrol.UpdateLights(&elevator)
+		elevator_control.UpdateLights(&elevator)
 	}
 }
