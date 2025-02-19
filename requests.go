@@ -2,9 +2,10 @@ package main
 
 import (
 	"project/elevio"
+	"project/datatypes"
 )
 
-func RequestsAbove(elevator *Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
+func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
 	for f := elevator.CurrentFloor + 1; f < len(elevator.Orders); f++ {
 		for _, order := range elevator.Orders[f] {
 			if order {
@@ -15,7 +16,7 @@ func RequestsAbove(elevator *Elevator) bool { // skal returnere true/false om de
 	return false
 }
 
-func RequestsBelow(elevator *Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
+func RequestsBelow(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
 	for f := elevator.CurrentFloor - 1; f >= 0; f-- {
 		for _, order := range elevator.Orders[f] {
 			if order {
@@ -26,7 +27,7 @@ func RequestsBelow(elevator *Elevator) bool { // skal returnere true/false om de
 	return false
 }
 
-func RequestsHere(elevator *Elevator) bool {
+func RequestsHere(elevator *datatypes.Elevator) bool {
 	for _, order := range elevator.Orders[elevator.CurrentFloor] {
 		if order {
 			return true
@@ -35,7 +36,7 @@ func RequestsHere(elevator *Elevator) bool {
 	return false
 }
 
-func RequestsHereMatchingDir(elevator *Elevator, dir elevio.MotorDirection) bool {
+func RequestsHereMatchingDir(elevator *datatypes.Elevator, dir elevio.MotorDirection) bool {
     for b, active := range elevator.Orders[elevator.CurrentFloor] {
         if !active {
             continue
@@ -55,7 +56,7 @@ func RequestsHereMatchingDir(elevator *Elevator, dir elevio.MotorDirection) bool
     return false
 }
 
-func AddOrder(elevator *Elevator, floor int, button elevio.ButtonType) {
+func AddOrder(elevator *datatypes.Elevator, floor int, button elevio.ButtonType) {
 	elevator.Orders[floor][button] = true
 	elevio.SetButtonLamp(button, floor, true)
 
@@ -72,7 +73,7 @@ func AddOrder(elevator *Elevator, floor int, button elevio.ButtonType) {
 
 
 // Ny ClearRequestsAtFloor som kun  sletter om retningen om den stemmer med kjøreretning, og cab calls
-func ClearRequestsAtFloor(elevator *Elevator) {
+func ClearRequestsAtFloor(elevator *datatypes.Elevator) {
     floor := elevator.CurrentFloor
     for b := 0; b < 3; b++ {
         if !elevator.Orders[floor][b] {
@@ -98,7 +99,7 @@ func ClearRequestsAtFloor(elevator *Elevator) {
     }
 }
 
-func ClearAllRequests(elevator *Elevator) {
+func ClearAllRequests(elevator *datatypes.Elevator) {
 	for f := 0; f < len(elevator.Orders); f++ {
 		for b := 0; b < 3; b++ {
 			elevator.Orders[f][b] = false
@@ -107,7 +108,7 @@ func ClearAllRequests(elevator *Elevator) {
 	}
 }
 
-func ChooseDirection(elevator *Elevator) elevio.MotorDirection { //velger retning basert på nåværende retning og bestillinger
+func ChooseDirection(elevator *datatypes.Elevator) elevio.MotorDirection { //velger retning basert på nåværende retning og bestillinger
 	switch elevator.Direction {
 	case elevio.MD_Up:
 		if RequestsAbove(elevator) {
@@ -135,7 +136,7 @@ func ChooseDirection(elevator *Elevator) elevio.MotorDirection { //velger retnin
 
 }
 
-func ShouldStop(elevator *Elevator) bool {
+func ShouldStop(elevator *datatypes.Elevator) bool {
     switch elevator.Direction {
     case elevio.MD_Up:
         return RequestsHereMatchingDir(elevator, elevio.MD_Up) || !RequestsAbove(elevator)
