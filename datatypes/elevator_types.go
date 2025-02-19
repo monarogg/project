@@ -2,6 +2,8 @@ package datatypes
 
 import (
 	"project/elevio"
+	"sync"
+	"time"
 )
 
 const N_FLOORS = 4
@@ -21,6 +23,8 @@ type Elevator struct {
 	Direction    elevio.MotorDirection
 	State        ElevBehaviour
 	Orders       [N_FLOORS][N_BUTTONS]bool
+	Config       ElevatorConfig
+	StopActive   bool
 }
 
 type ElevSharedInfo struct {
@@ -28,5 +32,9 @@ type ElevSharedInfo struct {
 	Behaviour    ElevBehaviour
 	Direction    elevio.MotorDirection
 	CurrentFloor int
-	// SKAL VI HA EN MUTEX HER?
+	Mutex        sync.Mutex
+}
+
+type ElevatorConfig struct {
+	DoorOpenDuration time.Duration
 }
