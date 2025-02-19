@@ -2,7 +2,6 @@ package elevator_control
 
 import (
 	"project/elevio"
-	"project/requests"
 	"time"
 )
 
@@ -23,21 +22,21 @@ type Elevator struct {
 	StopActive   bool
 }
 
-type ElevatorConfig struct {
-	DoorOpenDuration time.Duration
-}
+// type ElevatorConfig struct {
+// 	DoorOpenDuration time.Duration
+// }
 
-func initializeFSM() Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
+// func initializeFSM() Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
-	elevator := Elevator{
-		CurrentFloor: 0,              //starter i første etasje
-		Direction:    elevio.MD_Stop, // motoren skal stå i ro
-		State:        Idle,           //starter som inaktiv
-		Orders:       [4][3]bool{},   //ingen bestillinger
-	}
+// 	elevator := Elevator{
+// 		CurrentFloor: 0,              //starter i første etasje
+// 		Direction:    elevio.MD_Stop, // motoren skal stå i ro
+// 		State:        Idle,           //starter som inaktiv
+// 		Orders:       [4][3]bool{},   //ingen bestillinger
+// 	}
 
-	return elevator
-}
+// 	return elevator
+// }
 
 func OnRequestButtonPress(elevator *Elevator, btnFloor int, btnType elevio.ButtonType) {
 
@@ -78,29 +77,29 @@ func OnRequestButtonPress(elevator *Elevator, btnFloor int, btnType elevio.Butto
 	}
 }
 
-func StartDoorTimer(elevator *Elevator, duration time.Duration) {
-	time.AfterFunc(duration, func() { //time.Afterfunc starter en timer som varer i duration
-		OnDoorTimeout(elevator)
+// func StartDoorTimer(elevator *Elevator, duration time.Duration) {
+// 	time.AfterFunc(duration, func() { //time.Afterfunc starter en timer som varer i duration
+// 		OnDoorTimeout(elevator)
 
-	})
-}
+// 	})
+// }
 
-func OnFloorArrival(elevator *Elevator, floor int) {
-	elevator.CurrentFloor = floor // oppdaterer current floor
-	elevio.SetFloorIndicator(floor)
+// func OnFloorArrival(elevator *Elevator, floor int) {
+// 	elevator.CurrentFloor = floor // oppdaterer current floor
+// 	elevio.SetFloorIndicator(floor)
 
-	if ShouldStop(elevator) {
-		elevio.SetMotorDirection(elevio.MD_Stop)
-		elevator.Direction = elevio.MD_Stop
+// 	if ShouldStop(elevator) {
+// 		elevio.SetMotorDirection(elevio.MD_Stop)
+// 		elevator.Direction = elevio.MD_Stop
 
-		elevio.SetDoorOpenLamp(true)
-		elevator.State = DoorOpen
+// 		elevio.SetDoorOpenLamp(true)
+// 		elevator.State = DoorOpen
 
-		ClearRequestsAtFloor(elevator)
+// 		ClearRequestsAtFloor(elevator)
 
-		StartDoorTimer(elevator, 2*time.Second)
-	}
-}
+// 		StartDoorTimer(elevator, 2*time.Second)
+// 	}
+// }
 
 // funksjon som skal brukes når døren har vært åpen tilstrekkelig lenge (dør skal lukkes osv.):
 //func OnDoorTimeout(elevator *Elevator) {
@@ -116,39 +115,39 @@ func OnFloorArrival(elevator *Elevator, floor int) {
 //	}
 //}
 
-func OnDoorTimeout(elevator *Elevator) {
-	elevio.SetDoorOpenLamp(false)
-	elevator.Direction = ChooseDirection(elevator)
+// func OnDoorTimeout(elevator *Elevator) {
+// 	elevio.SetDoorOpenLamp(false)
+// 	elevator.Direction = ChooseDirection(elevator)
 
-	if elevator.Direction == elevio.MD_Stop {
-		elevator.State = Idle
-	} else {
-		elevator.State = Moving
-		elevio.SetMotorDirection(elevator.Direction)
-	}
-}
+// 	if elevator.Direction == elevio.MD_Stop {
+// 		elevator.State = Idle
+// 	} else {
+// 		elevator.State = Moving
+// 		elevio.SetMotorDirection(elevator.Direction)
+// 	}
+// }
 
-func OnStopButtonPress(elevator *Elevator) {
-	if elevator.StopActive {
-		// dersom stoppknappen så trykkes, skal stoppmodus deaktiveres:
-		elevator.StopActive = false
-		elevio.SetStopLamp(false)
+// func OnStopButtonPress(elevator *Elevator) {
+// 	if elevator.StopActive {
+// 		// dersom stoppknappen så trykkes, skal stoppmodus deaktiveres:
+// 		elevator.StopActive = false
+// 		elevio.SetStopLamp(false)
 
-	} else {
-		elevator.StopActive = true
-		elevio.SetStopLamp(true)
-		elevio.SetMotorDirection(elevio.MD_Stop)
-		ClearAllRequests(elevator)
-		elevator.State = Idle
-		UpdateLights(elevator)
-	}
-}
+// 	} else {
+// 		elevator.StopActive = true
+// 		elevio.SetStopLamp(true)
+// 		elevio.SetMotorDirection(elevio.MD_Stop)
+// 		ClearAllRequests(elevator)
+// 		elevator.State = Idle
+// 		UpdateLights(elevator)
+// 	}
+// }
 
-func UpdateLights(elevator *Elevator) {
-	// skal oppdatere button lights basert på aktive orders i Orders
-	for f := 0; f < len(elevator.Orders); f++ {
-		for b := 0; b < 3; b++ {
-			elevio.SetButtonLamp(elevio.ButtonType(b), f, elevator.Orders[f][b])
-		}
-	}
-}
+// func UpdateLights(elevator *Elevator) {
+// 	// skal oppdatere button lights basert på aktive orders i Orders
+// 	for f := 0; f < len(elevator.Orders); f++ {
+// 		for b := 0; b < 3; b++ {
+// 			elevio.SetButtonLamp(elevio.ButtonType(b), f, elevator.Orders[f][b])
+// 		}
+// 	}
+// }
