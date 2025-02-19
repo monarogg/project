@@ -31,7 +31,7 @@ type NetElevator struct {
 	ID           string
 	CurrentFloor int
 	Direction    elevio.MotorDirection
-	State        ElevatorState
+	State        ElevBehaviour
 	Orders       [4][3]bool
 	Config       ElevatorConfig
 	StopActive   bool
