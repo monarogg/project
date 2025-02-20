@@ -45,6 +45,14 @@ type ElevSharedInfo struct {
 	Mutex        sync.Mutex
 }
 
+type ElevatorContext struct {
+	HallRequests     [N_FLOORS][N_HALL_BUTTONS]RequestType
+	AllCabRequests   map[string][N_FLOORS]RequestType
+	UpdatedInfoElevs map[string]ElevatorInfo
+	PeerList         []string
+	LocalID          string
+}
+
 type ElevatorConfig struct {
 	DoorOpenDuration time.Duration
 }
