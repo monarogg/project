@@ -1,7 +1,7 @@
 package elevator_control
 
 import (
-	datatypes "project/DataTypes"
+	"project/datatypes"
 	"sync"
 )
 

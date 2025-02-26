@@ -42,6 +42,7 @@ func main() {
 
 	elevator := elevator_control.InitializeFSM()
 	knownElevators := make(map[string]datatypes.NetElevator)
+	context := elevator_control.GetElevatorContext(myID)
 
 	//Heratbeat broadcasting state,
 	go func() {
@@ -84,10 +85,10 @@ func main() {
 		select {
 		case a := <-drv_buttons: // a tilsvarer knappetrykket
 			// håndtere trykk på knapper
-			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button)
+			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button, context)
 
 		case a := <-drv_floors: // a blir etasjen man ankommer
-			elevator_control.OnFloorArrival(&elevator, a)
+			elevator_control.OnFloorArrival(&elevator, a, context)
 
 		case a := <-drv_obstr: // håndterer dersom obstruction blir aktivert
 			if a {
