@@ -27,13 +27,26 @@ func RequestAssigner(
 	peerList []string,
 	localID string) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
 
+	fmt.Println("Start RequestAssigner")
+	fmt.Println("Mottatt hallRequests:", hallRequests)
+	fmt.Println("Mottatt allCabRequests:", allCabRequests)
+	fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
+	fmt.Println("Mottatt peerList:", peerList)
+	fmt.Println("Mottatt localID:", localID)
+
 	HRAExecutablePath := "hall_request_assigner"
 
 	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 
 	for floor := 0; floor < datatypes.N_FLOORS; floor++ {
+		fmt.Printf("hallRequests size: %d x %d\n", len(hallRequests), len(hallRequests[0]))
+		fmt.Println("hallRequests:", hallRequests)
+		fmt.Println("allCabRequests:", allCabRequests)
+		fmt.Println("updatedInfoElevs:", updatedInfoElevs)
+		fmt.Println("peerList:", peerList)
+		fmt.Println("localID:", localID)
 		for button := 0; button < datatypes.N_BUTTONS; button++ {
-			if hallRequests[floor][button].State == datatypes.Assigned {
+			if button < datatypes.N_HALL_BUTTONS && hallRequests[floor][button].State == datatypes.Assigned {
 				// hallRequestsBool skal gi en oversikt over requests som er assigned (true)
 				hallRequestsBool[floor][button] = true
 			}
@@ -96,6 +109,12 @@ func RequestAssigner(
 		fmt.Println("json.Unmarshal error: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
+
+	fmt.Println(" RequestAssigner MOTTOK:")
+	fmt.Println("   - hallRequests =", hallRequests)
+	fmt.Println("   - allCabRequests =", allCabRequests)
+	fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
+	fmt.Println("   - peerList =", peerList)
 
 	return (*output)[localID] // dereferer pekeren, henter verdien av output, altså selve map objektet
 

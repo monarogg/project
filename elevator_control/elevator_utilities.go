@@ -1,6 +1,7 @@
 package elevator_control
 
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevio"
 	"project/requests"
@@ -26,11 +27,37 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 
 	elevator.Orders[btnFloor][btnType] = true //legger til request i Orders
 
+	fmt.Println("Etter knappetrykk: Orders = ", elevator.Orders)
+
+	if _, exists := context.AllCabRequests[context.LocalID]; !exists {
+		var emptyArray [datatypes.N_FLOORS]datatypes.RequestType // Opprett en tom array
+		context.AllCabRequests[context.LocalID] = emptyArray
+	}
+
+	tempArray := context.AllCabRequests[context.LocalID] // henter ut arrayet
+	tempArray[btnFloor] = datatypes.RequestType{State: datatypes.Assigned}
+	context.AllCabRequests[context.LocalID] = tempArray // legg tilbake i arrayet etter å ha endret status
+
+	fmt.Println("Oppdatert før RequestAssigner: AllCabRequests =", context.AllCabRequests)
+
+	// Oppdater updatedInfoElevs før vi kaller RequestAssigner
+	context.UpdatedInfoElevs[context.LocalID] = datatypes.ElevatorInfo{
+		Available: true,
+		Behaviour: elevator.State,
+		Direction: elevator.Direction,
+		Floor:     elevator.CurrentFloor,
+	}
+
+	// Debugging: Sjekk at updatedInfoElevs er oppdatert før RequestAssigner kalles
+	fmt.Println(" Oppdatert updatedInfoElevs før RequestAssigner:", context.UpdatedInfoElevs)
+
 	// kaller på RequestAssigner for å sjekke ny fordeling av orders:
 	newOrders := requesthandler.RequestAssigner(context.HallRequests, context.AllCabRequests, context.UpdatedInfoElevs, context.PeerList, context.LocalID)
 
 	// oppdaterer orders for denne heisen.
 	elevator.Orders = newOrders
+
+	fmt.Println(" Etter oppdatering: AllCabRequests =", context.AllCabRequests)
 
 	switch elevator.State {
 	case datatypes.DoorOpen:
