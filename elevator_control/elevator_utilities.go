@@ -4,6 +4,7 @@ import (
 	"project/datatypes"
 	"project/elevio"
 	"project/requests"
+	requesthandler "project/requests/request_handler"
 	"time"
 )
 
@@ -20,14 +21,21 @@ func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitial
 }
 
 // endrer heisens state og oppdaterer heisens orders:
-func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType elevio.ButtonType) {
+func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType elevio.ButtonType,
+	context *datatypes.ElevatorContext) {
 
 	elevator.Orders[btnFloor][btnType] = true //legger til request i Orders
+
+	// kaller på RequestAssigner for å sjekke ny fordeling av orders:
+	newOrders := requesthandler.RequestAssigner(context.HallRequests, context.AllCabRequests, context.UpdatedInfoElevs, context.PeerList, context.LocalID)
+
+	// oppdaterer orders for denne heisen.
+	elevator.Orders = newOrders
 
 	switch elevator.State {
 	case datatypes.DoorOpen:
 		if elevator.CurrentFloor == btnFloor {
-			StartDoorTimer(elevator, elevator.Config.DoorOpenDuration)
+			StartDoorTimer(elevator, elevator.Config.DoorOpenDuration, context)
 			requests.ClearRequestsAtFloor(elevator)
 		}
 	case datatypes.Moving:
@@ -40,7 +48,7 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 			elevio.SetMotorDirection(elevio.MD_Stop)
 			elevio.SetDoorOpenLamp(true)
 			requests.ClearRequestsAtFloor(elevator)
-			StartDoorTimer(elevator, 2*time.Second)
+			StartDoorTimer(elevator, 2*time.Second, context)
 		} else {
 
 			// dersom heisen er inaktiv (Idle), skal velge ny retning og tilstand
@@ -59,14 +67,14 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 	}
 }
 
-func StartDoorTimer(elevator *datatypes.Elevator, duration time.Duration) {
+func StartDoorTimer(elevator *datatypes.Elevator, duration time.Duration, context *datatypes.ElevatorContext) {
 	time.AfterFunc(duration, func() { //time.Afterfunc starter en timer som varer i duration
-		OnDoorTimeout(elevator)
+		OnDoorTimeout(elevator, context)
 
 	})
 }
 
-func OnFloorArrival(elevator *datatypes.Elevator, floor int) {
+func OnFloorArrival(elevator *datatypes.Elevator, floor int, context *datatypes.ElevatorContext) {
 	elevator.CurrentFloor = floor // oppdaterer current floor
 	elevio.SetFloorIndicator(floor)
 
@@ -79,12 +87,18 @@ func OnFloorArrival(elevator *datatypes.Elevator, floor int) {
 
 		requests.ClearRequestsAtFloor(elevator)
 
-		StartDoorTimer(elevator, 2*time.Second)
+		StartDoorTimer(elevator, 2*time.Second, context)
 	}
 }
 
-func OnDoorTimeout(elevator *datatypes.Elevator) {
+func OnDoorTimeout(elevator *datatypes.Elevator, context *datatypes.ElevatorContext) {
+
 	elevio.SetDoorOpenLamp(false)
+
+	// Kaller på RequestAssigner for å sjekke ny fordeling av oppgaver
+	newOrders := requesthandler.RequestAssigner(context.HallRequests, context.AllCabRequests, context.UpdatedInfoElevs, context.PeerList, context.LocalID)
+	elevator.Orders = newOrders
+
 	elevator.Direction = requests.ChooseDirection(elevator)
 
 	if elevator.Direction == elevio.MD_Stop {

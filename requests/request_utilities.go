@@ -1,8 +1,8 @@
 package requests
 
 import (
-	"project/elevio"
 	"project/datatypes"
+	"project/elevio"
 )
 
 func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
@@ -146,5 +146,3 @@ func ShouldStop(elevator *datatypes.Elevator) bool {
 	}
 	return false
 }
-
-

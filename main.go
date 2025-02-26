@@ -14,12 +14,15 @@ import (
 func main() {
 
 	idFlag := flag.String("id", "ElevDefault", "Unique ID for this elevator")
-	flag.Parse()
+	portFlag := flag.String("port", "15657", "Simulator port") // Define both flags first
 
-	myID := *idFlag // run with "./elevator --id=Elev1" , Elev 2 and so on to set ID
+	flag.Parse() // Call flag.Parse() only once
+
+	myID := *idFlag
+	port := *portFlag
 
 	numFloors := 4
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:"+port, numFloors)
 
 	//channels for peers
 	txPeerEnable := make(chan bool)
@@ -42,6 +45,7 @@ func main() {
 
 	elevator := elevator_control.InitializeFSM()
 	knownElevators := make(map[string]datatypes.NetElevator)
+	context := elevator_control.GetElevatorContext(myID)
 
 	//Heratbeat broadcasting state,
 	go func() {
@@ -65,7 +69,7 @@ func main() {
 		for {
 			tempState := <-rxElevatorState
 			knownElevators[tempState.ID] = tempState
-			//fmt.Println("Received state from:", tempState.ID, "Floor:", tempState.CurrentFloor)
+			fmt.Println("Received state from:", tempState.ID, "Floor:", tempState.CurrentFloor)
 		}
 	}()
 
@@ -84,10 +88,10 @@ func main() {
 		select {
 		case a := <-drv_buttons: // a tilsvarer knappetrykket
 			// håndtere trykk på knapper
-			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button)
+			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button, context)
 
 		case a := <-drv_floors: // a blir etasjen man ankommer
-			elevator_control.OnFloorArrival(&elevator, a)
+			elevator_control.OnFloorArrival(&elevator, a, context)
 
 		case a := <-drv_obstr: // håndterer dersom obstruction blir aktivert
 			if a {
