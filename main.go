@@ -14,12 +14,15 @@ import (
 func main() {
 
 	idFlag := flag.String("id", "ElevDefault", "Unique ID for this elevator")
-	flag.Parse()
+	portFlag := flag.String("port", "15657", "Simulator port") // Define both flags first
 
-	myID := *idFlag // run with "./elevator --id=Elev1" , Elev 2 and so on to set ID
+	flag.Parse() // Call flag.Parse() only once
+
+	myID := *idFlag
+	port := *portFlag
 
 	numFloors := 4
-	elevio.Init("localhost:15657", numFloors)
+	elevio.Init("localhost:"+port, numFloors)
 
 	//channels for peers
 	txPeerEnable := make(chan bool)
@@ -66,7 +69,7 @@ func main() {
 		for {
 			tempState := <-rxElevatorState
 			knownElevators[tempState.ID] = tempState
-			//fmt.Println("Received state from:", tempState.ID, "Floor:", tempState.CurrentFloor)
+			fmt.Println("Received state from:", tempState.ID, "Floor:", tempState.CurrentFloor)
 		}
 	}()
 
