@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-//// EVT BRUKE EN context struct - ElevatorContext
-
 func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := datatypes.Elevator{
@@ -24,7 +22,7 @@ func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitial
 
 // endrer heisens state og oppdaterer heisens orders:
 func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType elevio.ButtonType,
-	context datatypes.ElevatorContext) {
+	context *datatypes.ElevatorContext) {
 
 	elevator.Orders[btnFloor][btnType] = true //legger til request i Orders
 
@@ -69,14 +67,14 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 	}
 }
 
-func StartDoorTimer(elevator *datatypes.Elevator, duration time.Duration, context datatypes.ElevatorContext) {
+func StartDoorTimer(elevator *datatypes.Elevator, duration time.Duration, context *datatypes.ElevatorContext) {
 	time.AfterFunc(duration, func() { //time.Afterfunc starter en timer som varer i duration
 		OnDoorTimeout(elevator, context)
 
 	})
 }
 
-func OnFloorArrival(elevator *datatypes.Elevator, floor int, context datatypes.ElevatorContext) {
+func OnFloorArrival(elevator *datatypes.Elevator, floor int, context *datatypes.ElevatorContext) {
 	elevator.CurrentFloor = floor // oppdaterer current floor
 	elevio.SetFloorIndicator(floor)
 
@@ -93,7 +91,7 @@ func OnFloorArrival(elevator *datatypes.Elevator, floor int, context datatypes.E
 	}
 }
 
-func OnDoorTimeout(elevator *datatypes.Elevator, context datatypes.ElevatorContext) {
+func OnDoorTimeout(elevator *datatypes.Elevator, context *datatypes.ElevatorContext) {
 
 	elevio.SetDoorOpenLamp(false)
 
