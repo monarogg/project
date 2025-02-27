@@ -34,7 +34,7 @@ func RequestAssigner(
 	fmt.Println("Mottatt peerList:", peerList)
 	fmt.Println("Mottatt localID:", localID)
 
-	HRAExecutablePath := "hall_request_assigner"
+	HRAExecutablePath := "./hall_request_assigner"
 
 	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 
