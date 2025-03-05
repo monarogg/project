@@ -92,12 +92,14 @@ func RequestAssigner(
 		HallRequests: hallRequestsBool,
 		States:       inputStates,
 	}
+
 	jsonBytes, err := json.Marshal(input)
 	if err != nil {
 		fmt.Println("error with json.Marshal: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
 
+	fmt.Println("JSON Payload:", string(jsonBytes)) //debug
 	cmd := exec.Command(HRAExecutablePath, "-i", string(jsonBytes), "--includeCab")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
