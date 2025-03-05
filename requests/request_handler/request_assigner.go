@@ -16,8 +16,8 @@ type HRAElevState struct {
 }
 
 type HRAInput struct {
-	HallRequests [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool `json:"hallRequests"`
-	States       map[string]HRAElevState                       `json:"states"`
+	HallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool `json:"hallRequests"`
+	States       map[string]HRAElevState                            `json:"states"`
 }
 
 func RequestAssigner(
@@ -35,19 +35,11 @@ func RequestAssigner(
 	fmt.Println("Mottatt localID:", localID)
 
 	HRAExecutablePath := "./hall_request_assigner"
-	// evt for Windows:
-	//HRAExecutablePath := "./hall_request_assigner.exe"
 
-	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool{}
 
 	for floor := 0; floor < datatypes.N_FLOORS; floor++ {
-		fmt.Printf("hallRequests size: %d x %d\n", len(hallRequests), len(hallRequests[0]))
-		fmt.Println("hallRequests:", hallRequests)
-		fmt.Println("allCabRequests:", allCabRequests)
-		fmt.Println("updatedInfoElevs:", updatedInfoElevs)
-		fmt.Println("peerList:", peerList)
-		fmt.Println("localID:", localID)
-		for button := 0; button < datatypes.N_BUTTONS; button++ {
+		for button := 0; button < datatypes.N_HALL_BUTTONS; button++ {
 			if button < datatypes.N_HALL_BUTTONS && hallRequests[floor][button].State == datatypes.Assigned {
 				// hallRequestsBool skal gi en oversikt over requests som er assigned (true)
 				hallRequestsBool[floor][button] = true
@@ -110,7 +102,8 @@ func RequestAssigner(
 	}
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
-	err = json.Unmarshal(out, &output) // Unmarshal brukes til å dekode JSON-data fra en strøm (out) og lagre det i en go-variabel
+	fmt.Println("Command output (raw JSON):", string(out)) // debug
+	err = json.Unmarshal(out, &output)                     // Unmarshal brukes til å dekode JSON-data fra en strøm (out) og lagre det i en go-variabel
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
@@ -122,6 +115,7 @@ func RequestAssigner(
 	fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
 	fmt.Println("   - peerList =", peerList)
 
+	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
 	return (*output)[localID] // dereferer pekeren, henter verdien av output, altså selve map objektet
 
 }
