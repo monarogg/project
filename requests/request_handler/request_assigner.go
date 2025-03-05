@@ -35,6 +35,8 @@ func RequestAssigner(
 	fmt.Println("Mottatt localID:", localID)
 
 	HRAExecutablePath := "./hall_request_assigner"
+	// evt for Windows:
+	//HRAExecutablePath := "./hall_request_assigner.exe"
 
 	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 
@@ -95,11 +97,13 @@ func RequestAssigner(
 		fmt.Println("error with json.Marshal: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
+
 	cmd := exec.Command(HRAExecutablePath, "-i", string(jsonBytes), "--includeCab")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
-		fmt.Println(string(out))
+		fmt.Println("Command output: ", string(out))
+		// returnerer en tom matrise dersom noe går galt
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
 
