@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevio"
 )
@@ -79,6 +80,7 @@ func ClearRequestsAtFloor(elevator *datatypes.Elevator) {
 			continue
 		}
 		buttonType := elevio.ButtonType(b)
+		fmt.Println("Clearing order at floor", floor, "for button", buttonType)
 		if buttonType == elevio.BT_Cab {
 			// Always clear cab calls
 			elevator.Orders[floor][b] = false
