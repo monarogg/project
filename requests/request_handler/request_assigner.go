@@ -102,18 +102,17 @@ func RequestAssigner(
 	}
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
-	fmt.Println("Command output (raw JSON):", string(out)) // debug
-	err = json.Unmarshal(out, &output)                     // Unmarshal brukes til å dekode JSON-data fra en strøm (out) og lagre det i en go-variabel
+	err = json.Unmarshal(out, &output) // Unmarshal brukes til å dekode JSON-data fra en strøm (out) og lagre det i en go-variabel
 	if err != nil {
 		fmt.Println("json.Unmarshal error: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
 
-	fmt.Println(" RequestAssigner MOTTOK:")
-	fmt.Println("   - hallRequests =", hallRequests)
-	fmt.Println("   - allCabRequests =", allCabRequests)
-	fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
-	fmt.Println("   - peerList =", peerList)
+	// fmt.Println(" RequestAssigner MOTTOK:")
+	// fmt.Println("   - hallRequests =", hallRequests)
+	// fmt.Println("   - allCabRequests =", allCabRequests)
+	// fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
+	// fmt.Println("   - peerList =", peerList)
 
 	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
 	return (*output)[localID] // dereferer pekeren, henter verdien av output, altså selve map objektet

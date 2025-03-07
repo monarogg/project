@@ -42,10 +42,10 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 
 	// Oppdater updatedInfoElevs før vi kaller RequestAssigner
 	context.UpdatedInfoElevs[context.LocalID] = datatypes.ElevatorInfo{
-		Available: true,
-		Behaviour: elevator.State,
-		Direction: elevator.Direction,
-		Floor:     elevator.CurrentFloor,
+		Available:    true,
+		Behaviour:    elevator.State,
+		Direction:    elevator.Direction,
+		CurrentFloor: elevator.CurrentFloor,
 	}
 
 	// Debugging: Sjekk at updatedInfoElevs er oppdatert før RequestAssigner kalles

@@ -42,7 +42,7 @@ type ElevSharedInfo struct {
 	Behaviour    ElevBehaviour
 	Direction    elevio.MotorDirection
 	CurrentFloor int
-	Mutex        sync.Mutex
+	Mutex        sync.RWMutex
 }
 
 type ElevatorContext struct {
@@ -56,3 +56,11 @@ type ElevatorContext struct {
 type ElevatorConfig struct {
 	DoorOpenDuration time.Duration
 }
+
+type Direction int
+
+const (
+	DIR_STOP Direction = 0
+	DIR_UP   Direction = 1
+	DIR_DOWN Direction = 2
+)
