@@ -71,7 +71,7 @@ func RequestAssigner(
 		}
 		inputStates[ID] = HRAElevState{
 			Behavior:    behToS(elevatorINFO.Behaviour),
-			Floor:       elevatorINFO.Floor,
+			Floor:       elevatorINFO.CurrentFloor,
 			Direction:   dirToS(elevatorINFO.Direction),
 			CabRequests: cabRequestsBool[:],
 		}
