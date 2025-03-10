@@ -17,10 +17,10 @@ type RequestType struct {
 }
 
 type ElevatorInfo struct {
-	Available bool
-	Behaviour ElevBehaviour
-	Direction elevio.MotorDirection
-	Floor     int
+	Available    bool
+	Behaviour    ElevBehaviour
+	Direction    elevio.MotorDirection
+	CurrentFloor int
 }
 
 type NetworkMsg struct {

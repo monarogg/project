@@ -28,7 +28,7 @@ const (
 
 type Elevator struct {
 	CurrentFloor int
-	Direction    elevio.MotorDirection
+	Direction    Direction
 	State        ElevBehaviour
 	Orders       [N_FLOORS][N_BUTTONS]bool
 	Config       ElevatorConfig
