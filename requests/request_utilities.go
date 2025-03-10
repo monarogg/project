@@ -6,36 +6,36 @@ import (
 	"project/elevio"
 )
 
-func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
-	for f := elevator.CurrentFloor + 1; f < len(elevator.Orders); f++ {
-		for _, order := range elevator.Orders[f] {
-			if order {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
+// 	for f := elevator.CurrentFloor + 1; f < len(elevator.Orders); f++ {
+// 		for _, order := range elevator.Orders[f] {
+// 			if order {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func RequestsBelow(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
-	for f := elevator.CurrentFloor - 1; f >= 0; f-- {
-		for _, order := range elevator.Orders[f] {
-			if order {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func RequestsBelow(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
+// 	for f := elevator.CurrentFloor - 1; f >= 0; f-- {
+// 		for _, order := range elevator.Orders[f] {
+// 			if order {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func RequestsHere(elevator *datatypes.Elevator) bool {
-	for _, order := range elevator.Orders[elevator.CurrentFloor] {
-		if order {
-			return true
-		}
-	}
-	return false
-}
+// func RequestsHere(elevator *datatypes.Elevator) bool {
+// 	for _, order := range elevator.Orders[elevator.CurrentFloor] {
+// 		if order {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func RequestsHereMatchingDir(elevator *datatypes.Elevator, dir elevio.MotorDirection) bool {
 	for b, active := range elevator.Orders[elevator.CurrentFloor] {
@@ -137,14 +137,14 @@ func ChooseDirection(elevator *datatypes.Elevator) elevio.MotorDirection { //vel
 
 }
 
-func ShouldStop(elevator *datatypes.Elevator) bool {
-	switch elevator.Direction {
-	case elevio.MD_Up:
-		return RequestsHereMatchingDir(elevator, elevio.MD_Up) || !RequestsAbove(elevator)
-	case elevio.MD_Down:
-		return RequestsHereMatchingDir(elevator, elevio.MD_Down) || !RequestsBelow(elevator)
-	case elevio.MD_Stop:
-		return RequestsHere(elevator)
-	}
-	return false
-}
+// func ShouldStop(elevator *datatypes.Elevator) bool {
+// 	switch elevator.Direction {
+// 	case elevio.MD_Up:
+// 		return RequestsHereMatchingDir(elevator, elevio.MD_Up) || !RequestsAbove(elevator)
+// 	case elevio.MD_Down:
+// 		return RequestsHereMatchingDir(elevator, elevio.MD_Down) || !RequestsBelow(elevator)
+// 	case elevio.MD_Stop:
+// 		return RequestsHere(elevator)
+// 	}
+// 	return false
+// }

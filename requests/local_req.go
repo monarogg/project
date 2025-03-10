@@ -88,3 +88,52 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 	}
 	return datatypes.DIR_STOP, datatypes.Idle
 }
+
+func ShouldStop(elevator datatypes.Elevator) bool {
+	currentFloor := elevator.CurrentFloor
+	switch elevator.Direction {
+	case datatypes.DIR_DOWN:
+		return elevator.Orders[currentFloor][datatypes.BT_HallDOWN] || elevator.Orders[currentFloor][datatypes.BT_CAB] ||
+			!RequestsBelow(elevator)
+	case datatypes.DIR_UP:
+		return elevator.Orders[currentFloor][datatypes.BT_HallUP] || elevator.Orders[currentFloor][datatypes.BT_CAB] ||
+			!RequestsAbove(elevator)
+	case datatypes.DIR_STOP:
+		return elevator.Orders[currentFloor][datatypes.BT_HallUP] || elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[currentFloor][datatypes.BT_CAB]
+	}
+	// dersom retning er ukjent, returneres true for sikkerhetsskyld
+	return true
+}
+
+func CanClearCab(elevator datatypes.Elevator) bool {
+	return elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB]
+}
+
+func CanClearHallUp(elevator datatypes.Elevator) bool {
+	currentFloor := elevator.CurrentFloor
+	if !elevator.Orders[currentFloor][datatypes.BT_HallUP] {
+		return false
+	}
+	switch datatypes.Direction {
+	case datatypes.DIR_STOP, datatypes.DIR_UP:
+		return true
+	case datatypes.DIR_DOWN:
+		return !elevator.Orders[currentFloor][datatypes.BT_CAB] && !RequestsBelow(elevator)
+	}
+	return false
+}
+
+func CanClearHallDown(elevator datatypes.Elevator) bool {
+	currentFloor := elevator.CurrentFloor
+	if !elevator.Orders[currentFloor][datatypes.BT_HallDOWN] {
+		return false
+	}
+	switch datatypes.Direction {
+	case datatypes.DIR_DOWN, datatypes.DIR_STOP:
+		return true
+	case datatypes.DIR_UP:
+		return !elevator.Orders[currentFloor][datatypes.BT_CAB] && !RequestsAbove(elevator)
+	}
+	return false
+}

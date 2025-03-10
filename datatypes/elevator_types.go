@@ -18,6 +18,14 @@ const (
 	DoorOpen ElevBehaviour = 2
 )
 
+type Direction int
+
+const (
+	DIR_STOP Direction = 0
+	DIR_UP   Direction = 1
+	DIR_DOWN Direction = 2
+)
+
 type Elevator struct {
 	CurrentFloor int
 	Direction    elevio.MotorDirection
@@ -56,11 +64,3 @@ type ElevatorContext struct {
 type ElevatorConfig struct {
 	DoorOpenDuration time.Duration
 }
-
-type Direction int
-
-const (
-	DIR_STOP Direction = 0
-	DIR_UP   Direction = 1
-	DIR_DOWN Direction = 2
-)
