@@ -48,7 +48,7 @@ type NetElevator struct {
 type ElevSharedInfo struct {
 	Available    bool
 	Behaviour    ElevBehaviour
-	Direction    elevio.MotorDirection
+	Direction    Direction
 	CurrentFloor int
 	Mutex        sync.RWMutex
 }
