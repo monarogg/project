@@ -115,7 +115,7 @@ func CanClearHallUp(elevator datatypes.Elevator) bool {
 	if !elevator.Orders[currentFloor][datatypes.BT_HallUP] {
 		return false
 	}
-	switch datatypes.Direction {
+	switch elevator.Direction {
 	case datatypes.DIR_STOP, datatypes.DIR_UP:
 		return true
 	case datatypes.DIR_DOWN:
@@ -129,7 +129,7 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 	if !elevator.Orders[currentFloor][datatypes.BT_HallDOWN] {
 		return false
 	}
-	switch datatypes.Direction {
+	switch elevator.Direction {
 	case datatypes.DIR_DOWN, datatypes.DIR_STOP:
 		return true
 	case datatypes.DIR_UP:

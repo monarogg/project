@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"project/datatypes"
-	"project/elevio"
 )
 
 type HRAElevState struct {
@@ -128,13 +127,13 @@ func sliceContains(slice []string, elem string) bool { // skal returnere en bool
 	return false
 }
 
-func dirToS(dir elevio.MotorDirection) string {
+func dirToS(dir datatypes.Direction) string {
 	switch dir {
-	case elevio.MD_Down:
+	case datatypes.DIR_DOWN:
 		return "down"
-	case elevio.MD_Stop:
+	case datatypes.DIR_STOP:
 		return "stop"
-	case elevio.MD_Up:
+	case datatypes.DIR_UP:
 		return "up"
 	}
 	return "stop"

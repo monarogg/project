@@ -12,10 +12,10 @@ import (
 func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := datatypes.Elevator{
-		CurrentFloor: 0,              //starter i første etasje
-		Direction:    elevio.MD_Stop, // motoren skal stå i ro
-		State:        datatypes.Idle, //starter som inaktiv
-		Orders:       [4][3]bool{},   //ingen bestillinger
+		CurrentFloor: 0,                  //starter i første etasje
+		Direction:    datatypes.DIR_STOP, // motoren skal stå i ro
+		State:        datatypes.Idle,     //starter som inaktiv
+		Orders:       [4][3]bool{},       //ingen bestillinger
 	}
 
 	return elevator
@@ -79,9 +79,13 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 		} else {
 
 			// dersom heisen er inaktiv (Idle), skal velge ny retning og tilstand
-			dirnBehaviour := requests.ChooseDirection(elevator) // velger retning basert på Orders
-			elevator.Direction = dirnBehaviour
+			dir, beh := requests.ChooseNewDirAndBeh(elevator) // velger retning basert på Orders
+			elevator.Direction = dir
+			elevator.State = beh
 
+			if beh == datatypes.Moving {
+				/// MÅ VÆRE NOEN ENDRINGER MEN VET IKKE HELT HVILKE
+			}
 			if dirnBehaviour == elevio.MD_Stop {
 				// er ingen bestillinger i Orders - heisen skal være Idle
 				elevator.State = datatypes.Idle

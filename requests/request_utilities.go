@@ -109,23 +109,23 @@ func ClearAllRequests(elevator *datatypes.Elevator) {
 	}
 }
 
-func ChooseDirection(elevator *datatypes.Elevator) elevio.MotorDirection { //velger retning basert på nåværende retning og bestillinger
+func ChooseDirection(elevator *datatypes.Elevator) datatypes.Direction { //velger retning basert på nåværende retning og bestillinger
 	switch elevator.Direction {
-	case elevio.MD_Up:
+	case datatypes.DIR_UP:
 		if RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}
 		if RequestsHere(elevator) || RequestsBelow(elevator) {
 			return elevio.MD_Down
 		}
-	case elevio.MD_Down:
+	case datatypes.DIR_DOWN:
 		if RequestsBelow(elevator) {
 			return elevio.MD_Down
 		}
 		if RequestsHere(elevator) || RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}
-	case elevio.MD_Stop: // dersom den står stille prioriterer den bestillinger som er over
+	case datatypes.DIR_STOP: // dersom den står stille prioriterer den bestillinger som er over
 		if RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}

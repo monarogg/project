@@ -1,6 +1,8 @@
 package datatypes
 
-import "project/elevio"
+import (
+	"project/elevio"
+)
 
 type RequestState int
 
@@ -19,7 +21,7 @@ type RequestType struct {
 type ElevatorInfo struct {
 	Available    bool
 	Behaviour    ElevBehaviour
-	Direction    elevio.MotorDirection
+	Direction    Direction
 	CurrentFloor int
 }
 
