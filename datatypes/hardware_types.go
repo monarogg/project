@@ -11,8 +11,8 @@ const (
 type ButtonType int
 
 const (
-	BT_HallUP   ButtonType = 1
-	BT_HallDOWN ButtonType = 0
+	BT_HallUP   ButtonType = 0
+	BT_HallDOWN ButtonType = 1
 	BT_CAB      ButtonType = 2
 )
 

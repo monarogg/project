@@ -1,14 +1,10 @@
 package datatypes
 
-import (
-	"project/elevio"
-)
-
 type RequestState int
 
 const (
 	Completed  RequestState = 0
-	Unassignes RequestState = 1
+	Unassigned RequestState = 1
 	Assigned   RequestState = 2
 )
 
@@ -29,8 +25,8 @@ type NetworkMsg struct {
 	SenderID           string
 	Available          bool
 	Behavior           ElevBehaviour
-	Direction          elevio.MotorDirection
+	Direction          Direction
 	Floor              int
-	SenderHallRequests [N_FLOORS][N_BUTTONS]RequestType
-	allCabRequests     map[string][N_FLOORS]RequestType
+	SenderHallRequests [N_FLOORS][N_HALL_BUTTONS]RequestType
+	AllCabRequests     map[string][N_FLOORS]RequestType
 }
