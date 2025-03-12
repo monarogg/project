@@ -39,6 +39,7 @@ func RequestAssigner(
 
 	for floor := 0; floor < datatypes.N_FLOORS; floor++ {
 		for button := 0; button < datatypes.N_HALL_BUTTONS; button++ {
+
 			if button < datatypes.N_HALL_BUTTONS && hallRequests[floor][button].State == datatypes.Assigned {
 				// hallRequestsBool skal gi en oversikt over requests som er assigned (true)
 				hallRequestsBool[floor][button] = true
