@@ -25,7 +25,7 @@ func main() {
 
 	// Initialize elevator
 	elevator := elevator_control.InitializeFSM()
-	context := elevator_control.GetElevatorContext(myID)
+	context := elevator_control.GetElevatorContext(myID) //KANSKJE IKKE?
 
 	// Start broadcasting heartbeat
 	elevatorNetwork.StartHeartbeat(&elevator)
