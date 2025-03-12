@@ -4,3 +4,4 @@ package elevator_control
 // velge korrekt retning
 // sikre trygg drift med sensorer og tidsavbrudd
 // håndtere obstructions
+// fsm.go

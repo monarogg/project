@@ -1,5 +1,6 @@
 package elevator_control
 
+/// EVT FJERNE OG SØRGE FOR AT FUNKSJONALITETEN ER FORDELT MELLOM ELEVATOR_MANAGER OG FSM
 import (
 	"fmt"
 	"project/datatypes"

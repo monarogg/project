@@ -1,5 +1,7 @@
 package requests
 
+/// SKAL KANSKJE FJERNES, FUNKSJONALITET I REQUEST_LOGIC OG MAIN_REQUEST
+
 import (
 	"fmt"
 	"project/datatypes"
