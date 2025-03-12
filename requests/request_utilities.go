@@ -1,40 +1,43 @@
 package requests
 
+/// SKAL KANSKJE FJERNES, FUNKSJONALITET I REQUEST_LOGIC OG MAIN_REQUEST
+
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevio"
 )
 
-func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
-	for f := elevator.CurrentFloor + 1; f < len(elevator.Orders); f++ {
-		for _, order := range elevator.Orders[f] {
-			if order {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func RequestsAbove(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
+// 	for f := elevator.CurrentFloor + 1; f < len(elevator.Orders); f++ {
+// 		for _, order := range elevator.Orders[f] {
+// 			if order {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func RequestsBelow(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
-	for f := elevator.CurrentFloor - 1; f >= 0; f-- {
-		for _, order := range elevator.Orders[f] {
-			if order {
-				return true
-			}
-		}
-	}
-	return false
-}
+// func RequestsBelow(elevator *datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
+// 	for f := elevator.CurrentFloor - 1; f >= 0; f-- {
+// 		for _, order := range elevator.Orders[f] {
+// 			if order {
+// 				return true
+// 			}
+// 		}
+// 	}
+// 	return false
+// }
 
-func RequestsHere(elevator *datatypes.Elevator) bool {
-	for _, order := range elevator.Orders[elevator.CurrentFloor] {
-		if order {
-			return true
-		}
-	}
-	return false
-}
+// func RequestsHere(elevator *datatypes.Elevator) bool {
+// 	for _, order := range elevator.Orders[elevator.CurrentFloor] {
+// 		if order {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func RequestsHereMatchingDir(elevator *datatypes.Elevator, dir elevio.MotorDirection) bool {
 	for b, active := range elevator.Orders[elevator.CurrentFloor] {
@@ -79,6 +82,7 @@ func ClearRequestsAtFloor(elevator *datatypes.Elevator) {
 			continue
 		}
 		buttonType := elevio.ButtonType(b)
+		fmt.Println("Clearing order at floor", floor, "for button", buttonType)
 		if buttonType == elevio.BT_Cab {
 			// Always clear cab calls
 			elevator.Orders[floor][b] = false
@@ -107,23 +111,23 @@ func ClearAllRequests(elevator *datatypes.Elevator) {
 	}
 }
 
-func ChooseDirection(elevator *datatypes.Elevator) elevio.MotorDirection { //velger retning basert på nåværende retning og bestillinger
+func ChooseDirection(elevator *datatypes.Elevator) datatypes.Direction { //velger retning basert på nåværende retning og bestillinger
 	switch elevator.Direction {
-	case elevio.MD_Up:
+	case datatypes.DIR_UP:
 		if RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}
 		if RequestsHere(elevator) || RequestsBelow(elevator) {
 			return elevio.MD_Down
 		}
-	case elevio.MD_Down:
+	case datatypes.DIR_DOWN:
 		if RequestsBelow(elevator) {
 			return elevio.MD_Down
 		}
 		if RequestsHere(elevator) || RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}
-	case elevio.MD_Stop: // dersom den står stille prioriterer den bestillinger som er over
+	case datatypes.DIR_STOP: // dersom den står stille prioriterer den bestillinger som er over
 		if RequestsAbove(elevator) {
 			return elevio.MD_Up
 		}
@@ -135,14 +139,14 @@ func ChooseDirection(elevator *datatypes.Elevator) elevio.MotorDirection { //vel
 
 }
 
-func ShouldStop(elevator *datatypes.Elevator) bool {
-	switch elevator.Direction {
-	case elevio.MD_Up:
-		return RequestsHereMatchingDir(elevator, elevio.MD_Up) || !RequestsAbove(elevator)
-	case elevio.MD_Down:
-		return RequestsHereMatchingDir(elevator, elevio.MD_Down) || !RequestsBelow(elevator)
-	case elevio.MD_Stop:
-		return RequestsHere(elevator)
-	}
-	return false
-}
+// func ShouldStop(elevator *datatypes.Elevator) bool {
+// 	switch elevator.Direction {
+// 	case elevio.MD_Up:
+// 		return RequestsHereMatchingDir(elevator, elevio.MD_Up) || !RequestsAbove(elevator)
+// 	case elevio.MD_Down:
+// 		return RequestsHereMatchingDir(elevator, elevio.MD_Down) || !RequestsBelow(elevator)
+// 	case elevio.MD_Stop:
+// 		return RequestsHere(elevator)
+// 	}
+// 	return false
+// }

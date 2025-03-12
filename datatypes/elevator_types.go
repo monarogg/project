@@ -18,9 +18,17 @@ const (
 	DoorOpen ElevBehaviour = 2
 )
 
+type Direction int
+
+const (
+	DIR_STOP Direction = 0
+	DIR_UP   Direction = 1
+	DIR_DOWN Direction = 2
+)
+
 type Elevator struct {
 	CurrentFloor int
-	Direction    elevio.MotorDirection
+	Direction    Direction
 	State        ElevBehaviour
 	Orders       [N_FLOORS][N_BUTTONS]bool
 	Config       ElevatorConfig
@@ -40,9 +48,9 @@ type NetElevator struct {
 type ElevSharedInfo struct {
 	Available    bool
 	Behaviour    ElevBehaviour
-	Direction    elevio.MotorDirection
+	Direction    Direction
 	CurrentFloor int
-	Mutex        sync.Mutex
+	Mutex        sync.RWMutex
 }
 
 type ElevatorContext struct {

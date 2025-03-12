@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os/exec"
 	"project/datatypes"
-	"project/elevio"
 )
 
 type HRAElevState struct {
@@ -16,8 +15,8 @@ type HRAElevState struct {
 }
 
 type HRAInput struct {
-	HallRequests [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool `json:"hallRequests"`
-	States       map[string]HRAElevState                       `json:"states"`
+	HallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool `json:"hallRequests"`
+	States       map[string]HRAElevState                            `json:"states"`
 }
 
 func RequestAssigner(
@@ -27,13 +26,21 @@ func RequestAssigner(
 	peerList []string,
 	localID string) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
 
-	HRAExecutablePath := "hall_request_assigner"
+	fmt.Println("Start RequestAssigner")
+	fmt.Println("Mottatt hallRequests:", hallRequests)
+	fmt.Println("Mottatt allCabRequests:", allCabRequests)
+	fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
+	fmt.Println("Mottatt peerList:", peerList)
+	fmt.Println("Mottatt localID:", localID)
 
-	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+	HRAExecutablePath := "./hall_request_assigner"
+
+	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool{}
 
 	for floor := 0; floor < datatypes.N_FLOORS; floor++ {
 		for button := 0; button < datatypes.N_HALL_BUTTONS; button++ {
-			if hallRequests[floor][button].State == datatypes.Assigned {
+
+			if button < datatypes.N_HALL_BUTTONS && hallRequests[floor][button].State == datatypes.Assigned {
 				// hallRequestsBool skal gi en oversikt over requests som er assigned (true)
 				hallRequestsBool[floor][button] = true
 			}
@@ -64,7 +71,7 @@ func RequestAssigner(
 		}
 		inputStates[ID] = HRAElevState{
 			Behavior:    behToS(elevatorINFO.Behaviour),
-			Floor:       elevatorINFO.Floor,
+			Floor:       elevatorINFO.CurrentFloor,
 			Direction:   dirToS(elevatorINFO.Direction),
 			CabRequests: cabRequestsBool[:],
 		}
@@ -77,16 +84,20 @@ func RequestAssigner(
 		HallRequests: hallRequestsBool,
 		States:       inputStates,
 	}
+
 	jsonBytes, err := json.Marshal(input)
 	if err != nil {
 		fmt.Println("error with json.Marshal: ", err)
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
+
+	fmt.Println("JSON Payload:", string(jsonBytes)) //debug
 	cmd := exec.Command(HRAExecutablePath, "-i", string(jsonBytes), "--includeCab")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error: ", err)
-		fmt.Println(string(out))
+		fmt.Println("Command output: ", string(out))
+		// returnerer en tom matrise dersom noe går galt
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
 
@@ -97,6 +108,13 @@ func RequestAssigner(
 		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
 	}
 
+	// fmt.Println(" RequestAssigner MOTTOK:")
+	// fmt.Println("   - hallRequests =", hallRequests)
+	// fmt.Println("   - allCabRequests =", allCabRequests)
+	// fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
+	// fmt.Println("   - peerList =", peerList)
+
+	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
 	return (*output)[localID] // dereferer pekeren, henter verdien av output, altså selve map objektet
 
 }
@@ -110,13 +128,13 @@ func sliceContains(slice []string, elem string) bool { // skal returnere en bool
 	return false
 }
 
-func dirToS(dir elevio.MotorDirection) string {
+func dirToS(dir datatypes.Direction) string {
 	switch dir {
-	case elevio.MD_Down:
+	case datatypes.DIR_DOWN:
 		return "down"
-	case elevio.MD_Stop:
+	case datatypes.DIR_STOP:
 		return "stop"
-	case elevio.MD_Up:
+	case datatypes.DIR_UP:
 		return "up"
 	}
 	return "stop"

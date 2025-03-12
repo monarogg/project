@@ -1,6 +1,8 @@
 package elevator_control
 
+/// EVT FJERNE OG SØRGE FOR AT FUNKSJONALITETEN ER FORDELT MELLOM ELEVATOR_MANAGER OG FSM
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevio"
 	"project/requests"
@@ -11,10 +13,10 @@ import (
 func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := datatypes.Elevator{
-		CurrentFloor: 0,              //starter i første etasje
-		Direction:    elevio.MD_Stop, // motoren skal stå i ro
-		State:        datatypes.Idle, //starter som inaktiv
-		Orders:       [4][3]bool{},   //ingen bestillinger
+		CurrentFloor: 0,                  //starter i første etasje
+		Direction:    datatypes.DIR_STOP, // motoren skal stå i ro
+		State:        datatypes.Idle,     //starter som inaktiv
+		Orders:       [4][3]bool{},       //ingen bestillinger
 	}
 
 	return elevator
@@ -26,11 +28,37 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 
 	elevator.Orders[btnFloor][btnType] = true //legger til request i Orders
 
+	fmt.Println("Etter knappetrykk: Orders = ", elevator.Orders)
+
+	if _, exists := context.AllCabRequests[context.LocalID]; !exists {
+		var emptyArray [datatypes.N_FLOORS]datatypes.RequestType // Opprett en tom array
+		context.AllCabRequests[context.LocalID] = emptyArray
+	}
+
+	tempArray := context.AllCabRequests[context.LocalID] // henter ut arrayet
+	tempArray[btnFloor] = datatypes.RequestType{State: datatypes.Assigned}
+	context.AllCabRequests[context.LocalID] = tempArray // legg tilbake i arrayet etter å ha endret status
+
+	fmt.Println("Oppdatert før RequestAssigner: AllCabRequests =", context.AllCabRequests)
+
+	// Oppdater updatedInfoElevs før vi kaller RequestAssigner
+	context.UpdatedInfoElevs[context.LocalID] = datatypes.ElevatorInfo{
+		Available:    true,
+		Behaviour:    elevator.State,
+		Direction:    elevator.Direction,
+		CurrentFloor: elevator.CurrentFloor,
+	}
+
+	// Debugging: Sjekk at updatedInfoElevs er oppdatert før RequestAssigner kalles
+	fmt.Println(" Oppdatert updatedInfoElevs før RequestAssigner:", context.UpdatedInfoElevs)
+
 	// kaller på RequestAssigner for å sjekke ny fordeling av orders:
 	newOrders := requesthandler.RequestAssigner(context.HallRequests, context.AllCabRequests, context.UpdatedInfoElevs, context.PeerList, context.LocalID)
 
 	// oppdaterer orders for denne heisen.
 	elevator.Orders = newOrders
+
+	fmt.Println(" Etter oppdatering: AllCabRequests =", context.AllCabRequests)
 
 	switch elevator.State {
 	case datatypes.DoorOpen:
@@ -52,9 +80,13 @@ func OnRequestButtonPress(elevator *datatypes.Elevator, btnFloor int, btnType el
 		} else {
 
 			// dersom heisen er inaktiv (Idle), skal velge ny retning og tilstand
-			dirnBehaviour := requests.ChooseDirection(elevator) // velger retning basert på Orders
-			elevator.Direction = dirnBehaviour
+			dir, beh := requests.ChooseNewDirAndBeh(elevator) // velger retning basert på Orders
+			elevator.Direction = dir
+			elevator.State = beh
 
+			if beh == datatypes.Moving {
+				/// MÅ VÆRE NOEN ENDRINGER MEN VET IKKE HELT HVILKE
+			}
 			if dirnBehaviour == elevio.MD_Stop {
 				// er ingen bestillinger i Orders - heisen skal være Idle
 				elevator.State = datatypes.Idle
