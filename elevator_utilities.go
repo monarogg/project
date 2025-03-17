@@ -8,7 +8,6 @@ import (
 	"project/requests"
 	requesthandler "project/requests/request_handler"
 	"time"
-	"sync"
 )
 
 func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator

@@ -8,7 +8,7 @@ type RequestState int
 
 const (
 	Completed  RequestState = 0
-	Unassignes RequestState = 1
+	Unassigned RequestState = 1
 	Assigned   RequestState = 2
 )
 

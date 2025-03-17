@@ -1,4 +1,6 @@
-package elevator_control
+package fsm
+
+//TODO: Sørge for riktig bruk av funksjoner.
 
 // inneholder logikken for å kontrollere en heis
 

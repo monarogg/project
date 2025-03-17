@@ -76,14 +76,14 @@ func RunRequestControl(
 
 			switch req.State {
 			case datatypes.Completed:
-				req.State = datatypes.Unassignes
+				req.State = datatypes.Unassigned
 				req.Count++
 				req.AwareList = []string{localID}
 
-			case datatypes.Unassignes:
+			case datatypes.Unassigned:
 				req.Count++
 
-				if isSubset(peerList, req.AwareList) {
+				if isContainedIn(peerList, req.AwareList) {
 					req.State = datatypes.Assigned
 					req.AwareList = []string{localID}
 				}
