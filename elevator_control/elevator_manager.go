@@ -32,7 +32,7 @@ func UpdateInfoElev(elevator datatypes.Elevator) {
 }
 
 // endrer tilgjengelighet til heisen basert på val
-func setElevAvailability(val bool) {
+func SetElevAvailability(val bool) {
 	sharedInfoElevs.Mutex.Lock()
 	defer sharedInfoElevs.Mutex.Unlock()
 
@@ -40,7 +40,7 @@ func setElevAvailability(val bool) {
 }
 
 // initialiserer heisen, vet da ikke hvilken etasje den er i - må få gyldig etasje
-func initElevator(chanFloorSensor <-chan int) datatypes.Elevator {
+func InitElevator(chanFloorSensor <-chan int) datatypes.Elevator {
 	elevio.SetDoorOpenLamp(false) // slår av lampe for door open
 
 	// slår av alle etasjelys
@@ -59,19 +59,19 @@ func initElevator(chanFloorSensor <-chan int) datatypes.Elevator {
 }
 
 // starter/nullstiller en timer til et nytt antall sekunder
-func restartTimer(timer *time.Timer, sec int) {
+func RestartTimer(timer *time.Timer, sec int) {
 	timer.Reset(time.Duration(sec) * time.Second)
 }
 
 // stopper en aktiv timer
-func killTimer(timer *time.Timer) {
+func KillTimer(timer *time.Timer) {
 	if !timer.Stop() {
 		<-timer.C
 	}
 }
 
 // oversetter en Direction (int) til en motorretning (MotorDirection)
-func dirConv(dir datatypes.Direction) elevio.MotorDirection {
+func DirConv(dir datatypes.Direction) elevio.MotorDirection {
 	switch dir {
 	case datatypes.DIR_DOWN:
 		return elevio.MotorDirection(datatypes.MD_DOWN)

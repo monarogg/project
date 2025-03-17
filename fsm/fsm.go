@@ -6,6 +6,7 @@ package fsm
 
 import (
 	"project/datatypes"
+	"project/elevator_control"
 	"project/elevio"
 	"project/requests"
 	"time"
@@ -13,8 +14,6 @@ import (
 
 const DOOR_OPEN_DURATION = 3
 const MOVEMENT_TIMEOUT = 4
-
-// ENDRE NAVN!
 
 func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 	completedReqChan chan<- datatypes.ButtonEvent) {
@@ -25,15 +24,15 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 	go elevio.PollObstructionSwitch(obstructionChan)
 	go elevio.PollFloorSensor(floorSensorChan)
 
-	elevator := initElevator(floorSensorChan)
-	updateInfoElev(elevator)  // sørger for at systemet vet hvor heisen er
-	setElevAvailability(true) // ny heis - er available
+	elevator := elevator_control.InitElevator(floorSensorChan)
+	elevator_control.UpdateInfoElev(elevator)  // sørger for at systemet vet hvor heisen er
+	elevator_control.SetElevAvailability(true) // ny heis - er available
 
 	// opprette og deaktivere timere, for at de skal være forberedt på å brukes:
 	doorOpenTimer := time.NewTimer(0)
-	killTimer(doorOpenTimer)
+	elevator_control.KillTimer(doorOpenTimer)
 	movementTimer := time.NewTimer(0)
-	killTimer(movementTimer)
+	elevator_control.KillTimer(movementTimer)
 
 	// en hovedloop - uendelig for-løkke som inneholder select
 	for {
@@ -47,22 +46,22 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			switch elevator.State {
 			case datatypes.DoorOpen:
 				elevio.SetDoorOpenLamp(true)
-				restartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			case datatypes.Moving:
-				restartTimer(movementTimer, MOVEMENT_TIMEOUT)
-				elevio.SetMotorDirection(dirConv(elevator.Direction))
+				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
-			updateInfoElev(elevator) // oppdaterer info for å sørge for alle endringer gjort i switch case blir kommunisert videre
+			elevator_control.UpdateInfoElev(elevator) // oppdaterer info for å sørge for alle endringer gjort i switch case blir kommunisert videre
 		case elevator.CurrentFloor = <-floorSensorChan:
 			if elevator.State != datatypes.Moving {
 				break // hvis state ikke er Moving - skal ikke sjekke floor sensor
 			}
-			restartTimer(movementTimer, MOVEMENT_TIMEOUT)
-			setElevAvailability(true) // heis er aktiv - kan motta nye bestillinger
+			elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+			elevator_control.SetElevAvailability(true) // heis er aktiv - kan motta nye bestillinger
 
 			elevio.SetFloorIndicator(elevator.CurrentFloor)
 			if requests.ShouldStop(elevator) {
-				killTimer(movementTimer)
+				elevator_control.KillTimer(movementTimer)
 				elevio.SetMotorDirection(elevio.MotorDirection(datatypes.DIR_STOP))
 
 				if requests.CanClearHallUp(elevator) {
@@ -73,7 +72,7 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 					// trenger ikke oppdatere direction
 				} else {
 					elevator.State = datatypes.Idle
-					updateInfoElev(elevator)
+					elevator_control.UpdateInfoElev(elevator)
 					break
 				}
 
@@ -82,11 +81,11 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			}
 		case isObstructed := <-obstructionChan:
 			if isObstructed {
-				setElevAvailability(false) // fordi obstructed
-				killTimer(doorOpenTimer)
+				elevator_control.SetElevAvailability(false) // fordi obstructed
+				elevator_control.KillTimer(doorOpenTimer)
 			} else {
-				setElevAvailability(true)
-				restartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.SetElevAvailability(true)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
 		case <-doorOpenTimer.C:
 			if elevator.State != datatypes.DoorOpen {
@@ -101,18 +100,18 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 
 			switch elevator.State {
 			case datatypes.DoorOpen:
-				restartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			case datatypes.Idle:
 				elevio.SetDoorOpenLamp(false)
 			case datatypes.Moving:
 				elevio.SetDoorOpenLamp(false)
-				restartTimer(movementTimer, MOVEMENT_TIMEOUT)
-				elevio.SetMotorDirection(dirConv(elevator.Direction))
+				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
-			updateInfoElev(elevator)
+			elevator_control.UpdateInfoElev(elevator)
 
 		case <-movementTimer.C:
-			setElevAvailability(false)
+			elevator_control.SetElevAvailability(false)
 		}
 	}
 }
