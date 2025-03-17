@@ -8,12 +8,13 @@ import (
 	"project/requests"
 	requesthandler "project/requests/request_handler"
 	"time"
+	"sync"
 )
 
 func InitializeFSM() datatypes.Elevator { // funksjonen returnerer ferdiginitialisert instans av strukturen Elevator
 
 	elevator := datatypes.Elevator{
-		CurrentFloor: 0,                  //starter i første etasje
+		CurrentFloor: -1,                  //starter i første etasje
 		Direction:    datatypes.DIR_STOP, // motoren skal stå i ro
 		State:        datatypes.Idle,     //starter som inaktiv
 		Orders:       [4][3]bool{},       //ingen bestillinger

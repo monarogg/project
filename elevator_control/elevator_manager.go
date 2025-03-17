@@ -22,7 +22,7 @@ func GetInfoElev() datatypes.ElevatorInfo {
 }
 
 // oppdaterer info om heis
-func updateInfoElev(elevator datatypes.Elevator) {
+func UpdateInfoElev(elevator datatypes.Elevator) {
 	sharedInfoElevs.Mutex.Lock()
 	defer sharedInfoElevs.Mutex.Unlock()
 
