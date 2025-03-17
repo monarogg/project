@@ -2,13 +2,13 @@ package requests
 
 import (
 	"fmt"
-	"time"
-
 	"project/datatypes"
+	"project/elevator_control"
 	"project/elevio"
 	"project/network/bcast"
 	"project/network/peers"
 	requesthandler "project/requests/request_handler"
+	"time"
 )
 
 // Ports for peer detection and broadcasting requests
@@ -27,7 +27,7 @@ func RunRequestControl(
 	completedRequestCh <-chan datatypes.ButtonEvent,
 ) {
 	// Channels for local button presses, outgoing/incoming network messages, and peer updates
-	buttonEventCh := make(chan datatypes.ButtonEvent)
+	buttonEventCh := make(chan elevio.ButtonEvent)
 	go elevio.PollButtons(buttonEventCh)
 
 	messageTx := make(chan datatypes.NetworkMsg)
@@ -57,7 +57,7 @@ func RunRequestControl(
 	latestInfoElevators := make(map[string]datatypes.ElevatorInfo)
 
 	// Initialize your elevator info
-	myElevInfo := GetInfoElev()
+	myElevInfo := elevator_control.GetInfoElev()
 	latestInfoElevators[localID] = myElevInfo
 
 	for {
@@ -65,7 +65,7 @@ func RunRequestControl(
 
 		case btn := <-buttonEventCh:
 			var req datatypes.RequestType
-			if btn.Button == datatypes.BT_CAB {
+			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
 				req = allCabRequests[localID][btn.Floor]
 			} else {
 				if !connectedToNetwork {
@@ -89,6 +89,29 @@ func RunRequestControl(
 				}
 			}
 
+			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
+				tempCab := allCabRequests[localID]
+				tempCab[btn.Floor] = req
+				allCabRequests[localID] = tempCab
+			} else {
+				hallRequests[btn.Floor][btn.Button] = req
+			}
+
+		case btn := <-completedRequestCh:
+			var req datatypes.RequestType
+			if btn.Button == datatypes.BT_CAB {
+				req = allCabRequests[localID][btn.Floor]
+			} else {
+				req = hallRequests[btn.Floor][btn.Button]
+			}
+
+			if req.State == datatypes.Assigned {
+				req.State = datatypes.Completed
+				req.Count++
+				req.AwareList = []string{localID}
+				elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), btn.Floor, false)
+			}
+
 			if btn.Button == datatypes.BT_CAB {
 				tempCab := allCabRequests[localID]
 				tempCab[btn.Floor] = req
@@ -97,32 +120,9 @@ func RunRequestControl(
 				hallRequests[btn.Floor][btn.Button] = req
 			}
 
-		case doneBtn := <-completedRequestCh:
-			var req datatypes.RequestType
-			if doneBtn.Button == datatypes.BT_CAB {
-				req = allCabRequests[localID][doneBtn.Floor]
-			} else {
-				req = hallRequests[doneBtn.Floor][doneBtn.Button]
-			}
-
-			if req.State == datatypes.Assigned {
-				req.State = datatypes.Completed
-				req.Count++
-				req.AwareList = []string{localID}
-				elevio.SetButtonLamp(doneBtn.Button, doneBtn.Floor, false)
-			}
-
-			if doneBtn.Button == datatypes.BT_CAB {
-				tempCab := allCabRequests[localID]
-				tempCab[doneBtn.Floor] = req
-				allCabRequests[localID] = tempCab
-			} else {
-				hallRequests[doneBtn.Floor][doneBtn.Button] = req
-			}
-
 		//Periodically broadcast
 		case <-sendTicker.C:
-			myElevInfo = GetInfoElev()
+			myElevInfo = elevator_control.GetInfoElev()
 			latestInfoElevators[localID] = myElevInfo
 
 			newMsg := datatypes.NetworkMsg{
@@ -193,9 +193,9 @@ func RunRequestControl(
 				}
 				// compare floors
 				for f := 0; f < datatypes.N_FLOORS; f++ {
-					if shouldAcceptRequest(localCab[f], incomingCab[f]) {
+					if canAcceptRequest(localCab[f], incomingCab[f]) {
 						updated := incomingCab[f]
-						updated.AwareList = addToAwareList(updated.AwareList, localID)
+						updated.AwareList = addIfMissing(updated.AwareList, localID)
 						localCab[f] = updated
 					}
 				}
@@ -205,9 +205,9 @@ func RunRequestControl(
 			// Merge HallRequests
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
-					if shouldAcceptRequest(hallRequests[f][b], msg.SenderHallRequests[f][b]) {
+					if canAcceptRequest(hallRequests[f][b], msg.SenderHallRequests[f][b]) {
 						updated := msg.SenderHallRequests[f][b]
-						updated.AwareList = addToAwareList(updated.AwareList, localID)
+						updated.AwareList = addIfMissing(updated.AwareList, localID)
 						hallRequests[f][b] = updated
 					}
 				}
