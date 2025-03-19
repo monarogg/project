@@ -15,7 +15,10 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 	completedReqChan chan<- datatypes.ButtonEvent) {
 
 	floorSensorChan := make(chan int)
+	obstructionChan := make(chan bool) // tar inn hvorvidt obstruction eller ikke
+
 	go elevio.PollFloorSensor(floorSensorChan)
+	go elevio.PollObstructionSwitch(obstructionChan)
 
 	elevator := elevator_control.InitElevator(floorSensorChan)
 	elevator_control.UpdateInfoElev(elevator)
@@ -74,7 +77,14 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 				elevator.State = datatypes.DoorOpen
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
-
+		case isObstructed := <-obstructionChan:
+			if isObstructed {
+				elevator_control.SetElevAvailability(false) // fordi obstructed
+				elevator_control.KillTimer(doorOpenTimer)
+			} else {
+				elevator_control.SetElevAvailability(true)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+			}
 		case <-doorOpenTimer.C:
 			if elevator.State != datatypes.DoorOpen {
 				break
