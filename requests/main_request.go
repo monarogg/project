@@ -10,6 +10,7 @@ import (
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
 	"time"
+	"fmt"
 )
 
 const (
@@ -124,6 +125,12 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				SenderHallRequests: hallRequests,
 				AllCabRequests:     allCabRequests,
 			}
+
+			fmt.Println("Sending state update | ID:", localID, 
+			"| Floor:", newMsg.Floor, 
+			"| Direction:", newMsg.Direction, 
+			"| State:", newMsg.Behavior)
+
 			if isNetworkConnected {
 				sendMessageChan <- newMsg
 			}
