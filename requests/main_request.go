@@ -78,10 +78,14 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 			case datatypes.Completed:
 				request.State = datatypes.Unassigned
 				request.AwareList = []string{localID} // setter at heis med localID er aware of denne request
-				elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+				if isContainedIn(peerList, request.AwareList) {
+					request.State = datatypes.Assigned
+					request.AwareList = []string{localID}
+					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+				}
 
 			case datatypes.Unassigned:
-				if isContainedIn(peerList, request.AwareList) { // må definere denne funksjonen TODO
+				if isContainedIn(peerList, request.AwareList) {
 					request.State = datatypes.Assigned
 					request.AwareList = []string{localID}
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
