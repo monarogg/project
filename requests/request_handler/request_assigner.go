@@ -26,12 +26,12 @@ func RequestAssigner(
 	peerList []string,
 	localID string) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
 
-	// fmt.Println("Start RequestAssigner")
-	// fmt.Println("Mottatt hallRequests:", hallRequests)
-	// fmt.Println("Mottatt allCabRequests:", allCabRequests)
-	// fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
-	// fmt.Println("Mottatt peerList:", peerList)
-	// fmt.Println("Mottatt localID:", localID)
+	fmt.Println("Start RequestAssigner")
+	fmt.Println("Mottatt hallRequests:", hallRequests)
+	fmt.Println("Mottatt allCabRequests:", allCabRequests)
+	fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
+	fmt.Println("Mottatt peerList:", peerList)
+	fmt.Println("Mottatt localID:", localID)
 
 	HRAExecutablePath := "./hall_request_assigner"
 
