@@ -58,25 +58,12 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			if requests.ShouldStop(elevator) {
 				elevator_control.KillTimer(movementTimer)
 				elevio.SetMotorDirection(elevio.MotorDirection(datatypes.DIR_STOP))
-
-				// Clear requests at this floor
-				if requests.CanClearHallUp(elevator) {
-					elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallUP] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallUP}
-				}
-				if requests.CanClearHallDown(elevator) {
-					elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallDOWN] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallDOWN}
-				}
-				if requests.CanClearCab(elevator) {
-					elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_CAB}
-				}
-
+			
 				elevio.SetDoorOpenLamp(true)
 				elevator.State = datatypes.DoorOpen
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
+			
 		case isObstructed := <-obstructionChan:
 			if isObstructed {
 				elevator_control.SetElevAvailability(false) // fordi obstructed
@@ -90,19 +77,22 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 				break
 			}
 		
-			cleared := false
-			for button := 0; button < datatypes.N_BUTTONS; button++ {
-				if elevator.Orders[elevator.CurrentFloor][button] {
-					elevator.Orders[elevator.CurrentFloor][button] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.ButtonType(button)}
-					cleared = true
-				}
+			if requests.CanClearCab(elevator) {
+				elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_CAB}
+			}
+			
+			if elevator.Direction == datatypes.DIR_UP && requests.CanClearHallUp(elevator) {
+				elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallUP] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallUP}
+			}
+			
+			if elevator.Direction == datatypes.DIR_DOWN && requests.CanClearHallDown(elevator) {
+				elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallDOWN] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallDOWN}
 			}
 		
-			if cleared {
-				elevio.SetDoorOpenLamp(false)
-			}
-		
+			elevio.SetDoorOpenLamp(false)
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
 		
 			switch elevator.State {
@@ -117,6 +107,7 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			}
 		
 			elevator_control.UpdateInfoElev(elevator)
+		
 		
 
 		case <-movementTimer.C:
