@@ -89,7 +89,7 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			if elevator.State != datatypes.DoorOpen {
 				break
 			}
-		
+
 			cleared := false
 			for button := 0; button < datatypes.N_BUTTONS; button++ {
 				if elevator.Orders[elevator.CurrentFloor][button] {
@@ -98,13 +98,13 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 					cleared = true
 				}
 			}
-		
+
 			if cleared {
 				elevio.SetDoorOpenLamp(false)
 			}
-		
+
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
-		
+
 			switch elevator.State {
 			case datatypes.DoorOpen:
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
@@ -115,9 +115,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
-		
+
 			elevator_control.UpdateInfoElev(elevator)
-		
 
 		case <-movementTimer.C:
 			elevator_control.SetElevAvailability(false)
