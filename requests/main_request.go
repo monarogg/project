@@ -3,6 +3,7 @@ package requests
 // skal håndtere koordinering av knappetrykk, network messages og fordeling av bestillinger mellom heisene
 
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevator_control"
 	"project/elevio"
@@ -21,6 +22,8 @@ const (
 
 func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 	completedReqChan <-chan datatypes.ButtonEvent) {
+
+	fmt.Println("=== RequestControlLoop startet, ny versjon ===")
 
 	// channel for butten event:
 	buttenEventChan := make(chan elevio.ButtonEvent)
@@ -57,30 +60,39 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 	for {
 		select {
 		case btn := <-buttenEventChan:
+			fmt.Printf("DEBUG: Mottatt knappetrykk: Floor=%d, Button=%d\n", btn.Floor, btn.Button)
 			request := datatypes.RequestType{}
 
 			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
 				request = allCabRequests[localID][btn.Button]
 			} else {
 				if !isNetworkConnected {
+					fmt.Println("Network not connected, ignorerer hall request")
 					break // dersom ikke connected skal ikke hallrequesten legges til i requests
 				}
 				request = hallRequests[btn.Floor][btn.Button]
 			}
 			// switch case for å håndtere statusendringer for en forespørsel, basert på hva som skjer ved knappetrykk
+			fmt.Printf("DEBUG: Før endring: For floor %d, button %d, request state = %v\n", btn.Floor, btn.Button, request.State)
 			switch request.State {
 			case datatypes.Completed:
 				request.State = datatypes.Unassigned
 				request.AwareList = []string{localID} // setter at heis med localID er aware of denne request
-				elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+				if isContainedIn(peerList, request.AwareList) {
+					request.State = datatypes.Assigned
+					request.AwareList = []string{localID}
+					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+				}
 
 			case datatypes.Unassigned:
-				if isContainedIn(peerList, request.AwareList) { // må definere denne funksjonen TODO
-					request.State = datatypes.Completed
+				if isContainedIn(peerList, request.AwareList) {
+					request.State = datatypes.Assigned
 					request.AwareList = []string{localID}
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 				}
 			}
+			fmt.Printf("DEBUG: Etter endring: For floor %d, button %d, request state = %v\n", btn.Floor, btn.Button, request.State)
+
 			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) { // hvis det er en cab button
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
@@ -104,6 +116,7 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
+
 			if btn.Button == datatypes.BT_CAB {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
@@ -124,6 +137,12 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				SenderHallRequests: hallRequests,
 				AllCabRequests:     allCabRequests,
 			}
+
+			fmt.Println("Sending state update | ID:", localID,
+				"| Floor:", newMsg.Floor,
+				"| Direction:", newMsg.Direction,
+				"| State:", newMsg.Behavior)
+
 			if isNetworkConnected {
 				sendMessageChan <- newMsg
 			}

@@ -3,69 +3,33 @@ package main
 import (
 	"flag"
 	"fmt"
-	"project/elevator_control"
-	"project/elevator_network"
+	"project/datatypes"
 	"project/elevio"
+	"project/fsm"
+	"project/requests"
 )
 
 func main() {
-	idFlag := flag.String("id", "ElevDefault", "Unique ID for this elevator")
-	portFlag := flag.String("port", "15657", "Simulator port")
 
+	idFlag := flag.String("id", "", "Unique ID for this elevator")
+	portFlag := flag.String("port", "15657", "Simulator port")
 	flag.Parse()
+
+	if *idFlag == "" {
+		fmt.Println("Error: -id must be provided")
+		return
+	}
 
 	myID := *idFlag
 	port := *portFlag
 
-	numFloors := 4
-	elevio.Init("localhost:"+port, numFloors)
+	elevio.Init("localhost:"+port, datatypes.N_FLOORS)
 
-	// Initialize elevator network
-	elevatorNetwork := elevator_network.InitElevatorNetwork(myID)
+	requestsCh := make(chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
+	completedRequestCh := make(chan datatypes.ButtonEvent)
 
-	// Initialize elevator
-	elevator := elevator_control.InitializeFSM()
-	context := elevator_control.GetElevatorContext(myID)
+	go fsm.RunElevFSM(requestsCh, completedRequestCh)
+	go requests.RequestControlLoop(myID, requestsCh, completedRequestCh)
 
-	// Start broadcasting heartbeat
-	elevatorNetwork.StartHeartbeat(&elevator)
-
-	// Listen for elevator states
-	elevatorNetwork.ListenForStates()
-
-	// Start detecting missing elevators
-	go elevatorNetwork.DetectMissingElevators()
-
-	drv_buttons := make(chan elevio.ButtonEvent)
-	drv_floors := make(chan int)
-	drv_obstr := make(chan bool)
-	drv_stop := make(chan bool)
-	go elevio.PollButtons(drv_buttons)
-	go elevio.PollFloorSensor(drv_floors)
-	go elevio.PollObstructionSwitch(drv_obstr)
-	go elevio.PollStopButton(drv_stop)
-
-	fmt.Println("Elevator system ready. MyID =", myID)
-
-	for {
-		select {
-		case a := <-drv_buttons:
-			elevator_control.OnRequestButtonPress(&elevator, a.Floor, a.Button, context)
-
-		case a := <-drv_floors:
-			elevator_control.OnFloorArrival(&elevator, a, context)
-
-		case a := <-drv_obstr:
-			if a {
-				elevio.SetMotorDirection(elevio.MD_Stop)
-			} else {
-				elevio.SetMotorDirection(elevator.Direction)
-			}
-
-		case <-drv_stop:
-			elevator_control.OnStopButtonPress(&elevator)
-		}
-
-		elevator_control.UpdateLights(&elevator)
-	}
+	select {}
 }
