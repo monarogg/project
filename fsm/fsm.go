@@ -5,6 +5,7 @@ package fsm
 // inneholder logikken for å kontrollere en heis
 
 import (
+	"fmt"
 	"project/datatypes"
 	"project/elevator_control"
 	"project/elevio"
@@ -42,11 +43,14 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 				break // hvis state ikke er Idle - skal ikke finne new Direction og State
 			}
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+			fmt.Printf("DEBUG: Etter ChooseNewDirAndBeh: Floor: %d, Direction: %d, State: %v\n",
+				elevator.CurrentFloor, elevator.Direction, elevator.State)
 			// switch case på State for enten Moving eller DoorOpen:
 			switch elevator.State {
 			case datatypes.DoorOpen:
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				fmt.Printf("DEBUG: doorOpenTimer restartet på etasje %d med varighet %d sekunder\n", elevator.CurrentFloor, DOOR_OPEN_DURATION)
 			case datatypes.Moving:
 				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
@@ -56,6 +60,7 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 			if elevator.State != datatypes.Moving {
 				break // hvis state ikke er Moving - skal ikke sjekke floor sensor
 			}
+			fmt.Printf("DEBUG: floorSensor oppdatering mottatt. CurrentFloor: %d\n", elevator.CurrentFloor)
 			elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 			elevator_control.SetElevAvailability(true) // heis er aktiv - kan motta nye bestillinger
 
@@ -88,12 +93,24 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
 		case <-doorOpenTimer.C:
+			fmt.Printf("DEBUG: Orders for floor %d: %+v\n", elevator.CurrentFloor, elevator.Orders[elevator.CurrentFloor])
 			if elevator.State != datatypes.DoorOpen {
 				break // for å sikre at door open timer case dersom door open
 			}
 			if requests.CanClearCab(elevator) {
+				fmt.Printf("DEBUG: Orders for floor %d før rydning: %+v\n", elevator.CurrentFloor, elevator.Orders[elevator.CurrentFloor])
 				elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB] = false
 				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_CAB}
+			}
+			if requests.CanClearHallDown(elevator) {
+				fmt.Printf("DEBUG: Orders for floor %d før rydning: %+v\n", elevator.CurrentFloor, elevator.Orders[elevator.CurrentFloor])
+				elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallDOWN] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallDOWN}
+			}
+			if requests.CanClearHallUp(elevator) {
+				fmt.Printf("DEBUG: Orders for floor %d før rydning: %+v\n", elevator.CurrentFloor, elevator.Orders[elevator.CurrentFloor])
+				elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallUP] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.BT_HallUP}
 			}
 
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
