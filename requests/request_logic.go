@@ -3,10 +3,17 @@ package requests
 import (
 	"fmt"
 	"project/datatypes"
+	"project/config"
 )
 
-func RequestsAbove(elevator datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer over
-	for f := elevator.CurrentFloor + 1; f < datatypes.N_FLOORS; f++ {
+
+const (
+	N_FLOORS  = config.N_FLOORS
+	N_BUTTONS = datatypes.N_BUTTONS
+)
+
+func RequestsAbove(elevator datatypes.Elevator) bool {
+	for f := elevator.CurrentFloor + 1; f < config.N_FLOORS; f++ {
 		for _, order := range elevator.Orders[f] {
 			if order {
 				return true
@@ -15,6 +22,7 @@ func RequestsAbove(elevator datatypes.Elevator) bool { // skal returnere true/fa
 	}
 	return false
 }
+
 
 func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
 	for f := 0; f < elevator.CurrentFloor; f++ {
@@ -98,18 +106,21 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 	currentFloor := elevator.CurrentFloor
 	switch elevator.Direction {
 	case datatypes.DIR_DOWN:
-		return elevator.Orders[currentFloor][datatypes.BT_HallDOWN] || elevator.Orders[currentFloor][datatypes.BT_CAB] ||
+		return elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[currentFloor][datatypes.BT_CAB] ||
 			!RequestsBelow(elevator)
 	case datatypes.DIR_UP:
-		return elevator.Orders[currentFloor][datatypes.BT_HallUP] || elevator.Orders[currentFloor][datatypes.BT_CAB] ||
+		return elevator.Orders[currentFloor][datatypes.BT_HallUP] ||
+			elevator.Orders[currentFloor][datatypes.BT_CAB] ||
 			!RequestsAbove(elevator)
 	case datatypes.DIR_STOP:
-		return elevator.Orders[currentFloor][datatypes.BT_HallUP] || elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
+		return elevator.Orders[currentFloor][datatypes.BT_HallUP] ||
+			elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[currentFloor][datatypes.BT_CAB]
 	}
-	// dersom retning er ukjent, returneres true for sikkerhetsskyld
 	return true
 }
+
 
 func CanClearCab(elevator datatypes.Elevator) bool {
 	return elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB]

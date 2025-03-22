@@ -9,6 +9,7 @@ import (
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
 	"time"
+	"project/config"
 )
 
 const (
@@ -20,7 +21,7 @@ const (
 
 func RequestControlLoop(
 	localID string,
-	reqChan chan<- [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
+	reqChan chan<- [config.N_FLOORS][config.N_BUTTONS]bool,
 	completedReqChan <-chan datatypes.ButtonEvent,
 ) {
 	fmt.Println("=== RequestControlLoop startet, ny versjon ===")

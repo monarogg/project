@@ -1,7 +1,7 @@
 package datatypes
 
 import (
-	"project/elevio"
+	"project/config"
 	"sync"
 	"time"
 )
@@ -30,17 +30,7 @@ type Elevator struct {
 	CurrentFloor int
 	Direction    Direction
 	State        ElevBehaviour
-	Orders       [N_FLOORS][N_BUTTONS]bool
-	Config       ElevatorConfig
-	StopActive   bool
-}
-
-type NetElevator struct {
-	ID           string
-	CurrentFloor int
-	Direction    elevio.MotorDirection
-	State        ElevBehaviour
-	Orders       [4][3]bool
+	Orders       [config.N_FLOORS][config.N_BUTTONS]bool
 	Config       ElevatorConfig
 	StopActive   bool
 }
@@ -51,14 +41,6 @@ type ElevSharedInfo struct {
 	Direction    Direction
 	CurrentFloor int
 	Mutex        sync.RWMutex
-}
-
-type ElevatorContext struct {
-	HallRequests     [N_FLOORS][N_HALL_BUTTONS]RequestType
-	AllCabRequests   map[string][N_FLOORS]RequestType
-	UpdatedInfoElevs map[string]ElevatorInfo
-	PeerList         []string
-	LocalID          string
 }
 
 type ElevatorConfig struct {

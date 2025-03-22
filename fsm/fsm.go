@@ -15,28 +15,33 @@ const (
 )
 
 // clearOrders clears all orders for the current floor based on the elevator's direction.
-func clearOrders(elevator *datatypes.Elevator, completedReqChan chan<- datatypes.ButtonEvent) {
+func clearOrders(elevator *datatypes.Elevator, completedReqChan chan<- datatypes.ButtonEvent) bool {
 	floor := elevator.CurrentFloor
+	oppositeDirCall := false
 
-	// Clear cab call if present.
 	if requests.CanClearCab(*elevator) {
 		elevator.Orders[floor][datatypes.BT_CAB] = false
 		completedReqChan <- datatypes.ButtonEvent{Floor: floor, Button: datatypes.BT_CAB}
 	}
-	// Clear hall calls based on current direction.
+
 	switch elevator.Direction {
 	case datatypes.DIR_UP:
 		if requests.CanClearHallUp(*elevator) {
 			elevator.Orders[floor][datatypes.BT_HallUP] = false
 			completedReqChan <- datatypes.ButtonEvent{Floor: floor, Button: datatypes.BT_HallUP}
+		} else if elevator.Orders[floor][datatypes.BT_HallDOWN] {
+			oppositeDirCall = true
 		}
+
 	case datatypes.DIR_DOWN:
 		if requests.CanClearHallDown(*elevator) {
 			elevator.Orders[floor][datatypes.BT_HallDOWN] = false
 			completedReqChan <- datatypes.ButtonEvent{Floor: floor, Button: datatypes.BT_HallDOWN}
+		} else if elevator.Orders[floor][datatypes.BT_HallUP] {
+			oppositeDirCall = true
 		}
+
 	case datatypes.DIR_STOP:
-		// For idle, clear one of the hall calls and choose a direction.
 		if requests.CanClearHallUp(*elevator) {
 			elevator.Orders[floor][datatypes.BT_HallUP] = false
 			completedReqChan <- datatypes.ButtonEvent{Floor: floor, Button: datatypes.BT_HallUP}
@@ -47,6 +52,7 @@ func clearOrders(elevator *datatypes.Elevator, completedReqChan chan<- datatypes
 			elevator.Direction = datatypes.DIR_DOWN
 		}
 	}
+	return oppositeDirCall
 }
 
 func RunElevFSM(
@@ -71,6 +77,20 @@ func RunElevFSM(
 
 	for {
 		select {
+		case newOrders := <-reqChan:
+			if elevator.State == datatypes.Moving {
+				break
+			}
+			if elevator.State == datatypes.DoorOpen && elevator_control.OrdersChanged(elevator.Orders, newOrders) {
+				fmt.Println("1. Restarting doorOpenTimer for", DOOR_OPEN_DURATION, "seconds")
+				if elevio.GetObstruction() {
+					elevator_control.SetElevAvailability(false)
+				} else {
+					elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				}
+			}
+			elevator.Orders = newOrders
+
 		case elevator.Orders = <-reqChan:
 			if elevator.State == datatypes.Moving {
 				break
@@ -98,13 +118,15 @@ func RunElevFSM(
 				fmt.Println("Restarting movementTimer for", MOVEMENT_TIMEOUT, "seconds")
 
 				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
 
 			elevator_control.UpdateInfoElev(elevator)
 			fmt.Println("FSM: Choosing New Direction. Orders:", elevator.Orders)
 
-		case elevator.CurrentFloor = <-floorSensorChan:
+		case elevator.CurrentFloor = <-floorSensorChan: 
+			elevator_control.UpdateInfoElev(elevator)
 			fmt.Println("Floor sensor update:", elevator.CurrentFloor, "Orders:", elevator.Orders[elevator.CurrentFloor])
 			if elevator.State == datatypes.Moving {
 				fmt.Println("4. Restarting doorOpenTimer for", DOOR_OPEN_DURATION, "seconds")
@@ -134,51 +156,67 @@ func RunElevFSM(
 
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
-
 		case <-doorOpenTimer.C:
 			if elevator.State != datatypes.DoorOpen {
 				break
 			}
-			fmt.Println("DOORTIMER: Fired at floor", elevator.CurrentFloor, "with orders:", elevator.Orders[elevator.CurrentFloor])
 
-			// Force elevator direction to match the active hall call.
+			fmt.Println("DOORTIMER: Fired at floor", elevator.CurrentFloor)
+
+			// Cache direction before clearing
+			prevDir := elevator.Direction
+
+			// Force direction match to current request
 			if elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallUP] {
 				elevator.Direction = datatypes.DIR_UP
 			} else if elevator.Orders[elevator.CurrentFloor][datatypes.BT_HallDOWN] {
 				elevator.Direction = datatypes.DIR_DOWN
 			}
 
-			// Clear orders at this floor.
 			clearOrders(&elevator, completedReqChan)
 
-			// Recalculate state. If no orders remain, force Moving.
+			// After clearing orders:
 			if !requests.RequestsHere(elevator) {
 				fmt.Println("No orders remain at floor", elevator.CurrentFloor, "; forcing transition to Moving")
 				elevator.State = datatypes.Moving
 			} else {
 				elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
-				fmt.Println("Recomputed state:", elevator.State, "direction:", elevator.Direction)
 			}
 
-			// Update timers and outputs based on new state.
-			if elevator.State == datatypes.Moving || elevator.State == datatypes.Idle {
-				// Kill the door timer so it doesn't restart.
-				elevator_control.KillTimer(doorOpenTimer)
-				elevio.SetDoorOpenLamp(false)
-				if elevator.State == datatypes.Moving {
-					elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
-					elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
-				}
-				fmt.Println("Transitioned to", elevator.State, "- door closed.")
-			} else {
-				// If still DoorOpen, restart the timer.
+			// Check again if any active orders exist at the current floor
+			if requests.RequestsHere(elevator) {
+				fmt.Println("Staying in DoorOpen: more requests at this floor")
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				break
+			}
+
+			// Recalculate state
+			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+
+			switch elevator.State {
+			case datatypes.Moving:
+				elevio.SetDoorOpenLamp(false)
+				elevator_control.KillTimer(doorOpenTimer)
+				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
+				fmt.Println("Door closed. Moving to next floor.")
+
+			case datatypes.Idle:
+				elevio.SetDoorOpenLamp(false)
+				elevator_control.KillTimer(doorOpenTimer)
+				fmt.Println("Door closed. Elevator is now idle.")
+
+			case datatypes.DoorOpen:
+				if elevator.Direction != prevDir {
+					fmt.Println("Direction changed → extending DoorOpenTimer")
+				}
 				elevio.SetDoorOpenLamp(true)
-				fmt.Println("Remaining in DoorOpen state; door stays open.")
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				fmt.Println("Remaining in DoorOpen.")
 			}
 
 			elevator_control.UpdateInfoElev(elevator)
-			fmt.Println("FSM: Current Orders:", elevator.Orders)
+			fmt.Println("Updated State:", elevator.State, "Direction:", elevator.Direction)
 		}
 	}
 }

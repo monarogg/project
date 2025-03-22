@@ -52,6 +52,7 @@ func Init(addr string, numFloors int) {
 
 func SetMotorDirection(dir MotorDirection) {
 	write([4]byte{1, byte(dir), 0, 0})
+	fmt.Println("Motor direction set to:", dir)
 }
 
 func SetButtonLamp(button ButtonType, floor int, value bool) {

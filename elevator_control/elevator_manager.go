@@ -4,6 +4,7 @@ import (
 	"project/datatypes"
 	"project/elevio"
 	"time"
+	"project/config"
 )
 
 var sharedInfoElevs datatypes.ElevSharedInfo
@@ -44,8 +45,8 @@ func InitElevator(chanFloorSensor <-chan int) datatypes.Elevator {
 	elevio.SetDoorOpenLamp(false) // slår av lampe for door open
 
 	// slår av alle etasjelys
-	for f := 0; f < datatypes.N_FLOORS; f++ {
-		for b := 0; b < datatypes.N_BUTTONS; b++ {
+	for f := 0; f < config.N_FLOORS; f++ {
+		for b := 0; b < config.N_BUTTONS; b++ {
 			elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 		}
 	}
@@ -55,7 +56,7 @@ func InitElevator(chanFloorSensor <-chan int) datatypes.Elevator {
 	elevio.SetMotorDirection(elevio.MD_Stop) // stopper heisen i den funnede etasjen
 	elevio.SetFloorIndicator(currentFloor)   // oppdaterer heisens etasje med lampe
 
-	return datatypes.Elevator{CurrentFloor: currentFloor, Direction: datatypes.DIR_STOP, Orders: [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}, State: datatypes.Idle}
+	return datatypes.Elevator{CurrentFloor: currentFloor, Direction: datatypes.DIR_STOP, Orders: [config.N_FLOORS][config.N_BUTTONS]bool{}, State: datatypes.Idle}
 }
 
 // starter/nullstiller en timer til et nytt antall sekunder
@@ -81,4 +82,14 @@ func DirConv(dir datatypes.Direction) elevio.MotorDirection {
 		return elevio.MotorDirection(datatypes.MD_UP)
 	}
 	return elevio.MotorDirection(datatypes.MD_STOP)
+}
+func OrdersChanged(old, new [config.N_FLOORS][config.N_BUTTONS]bool) bool {
+	for i := range old {
+		for j := range old[i] {
+			if old[i][j] != new[i][j] {
+				return true
+			}
+		}
+	}
+	return false
 }
