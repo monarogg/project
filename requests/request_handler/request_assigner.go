@@ -1,153 +1,147 @@
 package requesthandler
 
 import (
-	"encoding/json"
-	"fmt"
-	"os/exec"
-	"project/datatypes"
+    "encoding/json"
+    "fmt"
+    "os/exec"
+    "project/datatypes"
 )
 
 type HRAElevState struct {
-	Behavior    string `json:"behaviour"`
-	Floor       int    `json:"floor"`
-	Direction   string `json:"direction"`
-	CabRequests []bool `json:"cabRequests"`
+    Behavior    string `json:"behaviour"`
+    Floor       int    `json:"floor"`
+    Direction   string `json:"direction"`
+    CabRequests []bool `json:"cabRequests"`
 }
 
 type HRAInput struct {
-	HallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool `json:"hallRequests"`
-	States       map[string]HRAElevState                            `json:"states"`
+    HallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool `json:"hallRequests"`
+    States       map[string]HRAElevState                            `json:"states"`
 }
 
 func RequestAssigner(
-	hallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType,
-	allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType,
-	updatedInfoElevs map[string]datatypes.ElevatorInfo,
-	peerList []string,
-	localID string) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
+    hallRequests [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType,
+    allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType,
+    updatedInfoElevs map[string]datatypes.ElevatorInfo,
+    peerList []string,
+    localID string,
+) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
 
-	fmt.Println("Start RequestAssigner")
-	fmt.Println("Mottatt hallRequests:", hallRequests)
-	fmt.Println("Mottatt allCabRequests:", allCabRequests)
-	fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
-	fmt.Println("Mottatt peerList:", peerList)
-	fmt.Println("Mottatt localID:", localID)
+    fmt.Println("Start RequestAssigner")
+    fmt.Println("Mottatt hallRequests:", hallRequests)
+    fmt.Println("Mottatt allCabRequests:", allCabRequests)
+    fmt.Println("Mottatt updatedInfoElevs:", updatedInfoElevs)
+    fmt.Println("Mottatt peerList:", peerList)
+    fmt.Println("Mottatt localID:", localID)
 
-	HRAExecutablePath := "./hall_request_assigner"
+    hraPath := "./hall_request_assigner"
 
-	hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool{}
+    // Build input for HRA
+    hallRequestsBool := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool{}
 
-	for floor := 0; floor < datatypes.N_FLOORS; floor++ {
-		for button := 0; button < datatypes.N_HALL_BUTTONS; button++ {
+    fmt.Println("Debug: Checking Hall Request State Before Assignment")
+    for f := 0; f < datatypes.N_FLOORS; f++ {
+        for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+            s := hallRequests[f][b].State
+            fmt.Printf("Floor %d, Button %d, State: %d\n", f, b, s)
+        }
+    }
 
-			if button < datatypes.N_HALL_BUTTONS && hallRequests[floor][button].State == datatypes.Assigned {
-				// hallRequestsBool skal gi en oversikt over requests som er assigned (true)
-				hallRequestsBool[floor][button] = true
-			}
-		}
-	}
-
-	inputStates := map[string]HRAElevState{}
-
-	for ID, cabRequests := range allCabRequests {
-		elevatorINFO, exists := updatedInfoElevs[ID]
-		if !exists {
-			continue
-		}
-		if !elevatorINFO.Available {
-			continue
-		}
-
-		if !sliceContains(peerList, ID) && ID != localID { // sjekker om ID ikke er i peerlist, og sjekker at ID ikke er lik localID
-			continue
-		}
-
-		cabRequestsBool := [datatypes.N_FLOORS]bool{}
-
-		for floor := 0; floor < datatypes.N_FLOORS; floor++ {
-			if cabRequests[floor].State == datatypes.Assigned {
-				cabRequestsBool[floor] = true
-			}
-		}
-		inputStates[ID] = HRAElevState{
-			Behavior:    behToS(elevatorINFO.Behaviour),
-			Floor:       elevatorINFO.CurrentFloor,
-			Direction:   dirToS(elevatorINFO.Direction),
-			CabRequests: cabRequestsBool[:],
-		}
-	}
-	if len(inputStates) == 0 {
-		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
-	}
-
-	input := HRAInput{
-		HallRequests: hallRequestsBool,
-		States:       inputStates,
-	}
-
-	jsonBytes, err := json.Marshal(input)
-	if err != nil {
-		fmt.Println("error with json.Marshal: ", err)
-		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
-	}
-
-	//fmt.Println("JSON Payload:", string(jsonBytes)) //debug
-	cmd := exec.Command(HRAExecutablePath, "-i", string(jsonBytes), "--includeCab")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		fmt.Println("exec.Command error: ", err)
-		fmt.Println("Command output: ", string(out))
-		// returnerer en tom matrise dersom noe går galt
-		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
-	}
-
-	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
-	err = json.Unmarshal(out, &output) // Unmarshal brukes til å dekode JSON-data fra en strøm (out) og lagre det i en go-variabel
-	if err != nil {
-		fmt.Println("json.Unmarshal error: ", err)
-		return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
-	}
-
-	// fmt.Println(" RequestAssigner MOTTOK:")
-	// fmt.Println("   - hallRequests =", hallRequests)
-	// fmt.Println("   - allCabRequests =", allCabRequests)
-	// fmt.Println("   - updatedInfoElevs =", updatedInfoElevs)
-	// fmt.Println("   - peerList =", peerList)
-
-	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
-	return (*output)[localID] // dereferer pekeren, henter verdien av output, altså selve map objektet
-
+    // Only add Unassigned hall calls for external assignment
+    for f := 0; f < datatypes.N_FLOORS; f++ {
+        for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+            if hallRequests[f][b].State == datatypes.Unassigned && isActiveRequest(hallRequests[f][b]) {
+    			hallRequestsBool[f][b] = true
 }
+        }
+    }
 
-func sliceContains(slice []string, elem string) bool { // skal returnere en boolsk verdi avhengig av om slicen inneholder elem
-	for _, e := range slice {
-		if e == elem {
-			return true
-		}
-	}
-	return false
+    inputStates := map[string]HRAElevState{}
+
+    fmt.Println("Debug: Checking Cab Request State Before Assignment")
+    for ID, cabReqs := range allCabRequests {
+        elevInfo, ok := updatedInfoElevs[ID]
+        if !ok || !elevInfo.Available {
+            continue
+        }
+        cabs := [datatypes.N_FLOORS]bool{}
+        for f := 0; f < datatypes.N_FLOORS; f++ {
+            if cabReqs[f].State == datatypes.Assigned {
+                cabs[f] = true
+            }
+        }
+        fmt.Println("Elevator:", ID, "Cab Requests:", cabs)
+
+        inputStates[ID] = HRAElevState{
+            Behavior:    behToS(elevInfo.Behaviour),
+            Floor:       elevInfo.CurrentFloor,
+            Direction:   dirToS(elevInfo.Direction),
+            CabRequests: cabs[:],
+        }
+    }
+
+    // If no active elevators available, do nothing
+    if len(inputStates) == 0 {
+        return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+    }
+
+    input := HRAInput{
+        HallRequests: hallRequestsBool,
+        States:       inputStates,
+    }
+
+    fmt.Println("Final Hall Requests before sending:", hallRequestsBool)
+    fmt.Println("Final Cab Requests before sending:", inputStates)
+
+    jsonBytes, err := json.Marshal(input)
+    if err != nil {
+        fmt.Println("JSON Marshal Error:", err)
+        return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+    }
+    fmt.Println("Final JSON Payload:", string(jsonBytes))
+
+    cmd := exec.Command(hraPath, "-i", string(jsonBytes), "--includeCab")
+    out, err := cmd.CombinedOutput()
+    if err != nil {
+        fmt.Println("exec.Command error:", err)
+        fmt.Println("Command output:", string(out))
+        return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+    }
+
+    output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
+    if err = json.Unmarshal(out, &output); err != nil {
+        fmt.Println("json.Unmarshal error:", err)
+        return [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool{}
+    }
+
+    fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
+    return (*output)[localID]
 }
 
 func dirToS(dir datatypes.Direction) string {
-	switch dir {
-	case datatypes.DIR_DOWN:
-		return "down"
-	case datatypes.DIR_STOP:
-		return "stop"
-	case datatypes.DIR_UP:
-		return "up"
-	}
-	return "stop"
+    switch dir {
+    case datatypes.DIR_DOWN:
+        return "down"
+    case datatypes.DIR_STOP:
+        return "stop"
+    case datatypes.DIR_UP:
+        return "up"
+    }
+    return "stop"
 }
 
 func behToS(beh datatypes.ElevBehaviour) string {
-	switch beh {
-	case datatypes.Idle:
-		return "idle"
-	case datatypes.DoorOpen:
-		return "doorOpen"
-	case datatypes.Moving:
-		return "moving"
-	}
-	return "idle"
+    switch beh {
+    case datatypes.Idle:
+        return "idle"
+    case datatypes.DoorOpen:
+        return "doorOpen"
+    case datatypes.Moving:
+        return "moving"
+    }
+    return "idle"
+}
+
+func isActiveRequest(r datatypes.RequestType) bool {
+    return len(r.AwareList) > 0
 }

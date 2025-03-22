@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"fmt"
 	"project/datatypes"
 )
 
@@ -86,7 +87,11 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 			return datatypes.DIR_STOP, datatypes.Idle
 		}
 	}
+
+	fmt.Println("Debug: Choosing Direction. Orders:", elevator.Orders, "Current Floor:", elevator.CurrentFloor)
+
 	return datatypes.DIR_STOP, datatypes.Idle
+
 }
 
 func ShouldStop(elevator datatypes.Elevator) bool {

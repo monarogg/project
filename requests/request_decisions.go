@@ -1,79 +1,80 @@
 package requests
 
-// skal inneholde "hjelpefunksjoner" for main_request
+// Helper functions for main_request
 
 import (
 	"project/datatypes"
 )
 
-func canAcceptRequest(locReq datatypes.RequestType, incomingReq datatypes.RequestType) bool {
+// canAcceptRequest decides whether we should accept an incoming RequestType
+// over the local RequestType, based on count and state.
+func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 
-	if incomingReq.Count < locReq.Count { // hvis avsender sin count er lavere enn lokal - er ikke ny informasjon
+	// If the incoming count is lower, it has older info → reject
+	if incomingReq.Count < localReq.Count {
 		return false
 	}
-	if incomingReq.Count > locReq.Count { // hvis avsender count er større enn lokal - er ny informasjon
+	// If the incoming count is higher, it has newer info → accept
+	if incomingReq.Count > localReq.Count {
 		return true
 	}
-	if incomingReq.State == locReq.State && isContainedIn(incomingReq.AwareList, locReq.AwareList) {
-		// har samme informasjon, så skal ikke godta
+	// Same count, same state, and identical awareness → nothing new → reject
+	if incomingReq.State == localReq.State && isContainedIn(incomingReq.AwareList, localReq.AwareList) {
 		return false
 	}
 
-	// switch case for å sammenligne states og count, deretter vurdere state etter at evt avgjørelse er tatt:
-	switch locReq.State {
-	case datatypes.Unassigned: // returnerer false dersom innkommende er completed, for å sikre enighet om at requesten ikke fullført
+	// Compare states:
+	switch localReq.State {
+	case datatypes.Unassigned:
+		// If local is Unassigned, do not accept Completed from incoming
 		switch incomingReq.State {
-		case datatypes.Unassigned:
-			return true
-		case datatypes.Assigned:
+		case datatypes.Unassigned, datatypes.Assigned:
 			return true
 		case datatypes.Completed:
 			return false
 		}
+
 	case datatypes.Assigned:
-		switch incomingReq.State { // aksepterer kun dersom innkommende også er assigned, for å opprettholde statusen til requesten
-		case datatypes.Unassigned:
-			return false
-		case datatypes.Assigned:
-			return true
-		case datatypes.Completed:
-			return false
-		}
-	case datatypes.Completed: // return alltid true, fordi denne requesten er da ansett som ferdigstilt - ny informasjon skal oppdatere
+		// If local is Assigned, accept only if incoming is also Assigned
 		switch incomingReq.State {
 		case datatypes.Unassigned:
-			return true
+			return false
 		case datatypes.Assigned:
 			return true
 		case datatypes.Completed:
-			return true
-		}
-
-	}
-	return false // default for å sikre å ikke akseptere requests dersom ingen betingelser stemmer
-}
-
-func addIfMissing(awareList []string, ID string) []string { // returnerer ny AwareList med lagt til ID
-	for id := range awareList {
-		if awareList[id] == ID {
-			return awareList
-		}
-	}
-	awareList = append(awareList, ID)
-	return awareList
-}
-
-func isContainedIn(requiredSet []string, referenceSet []string) bool {
-	// lager et sett fra referenceSet for oppslag, key - strenger, value - tomme structs:
-	refSet := make(map[string]struct{})
-	for _, elem := range referenceSet {
-		refSet[elem] = struct{}{} // hvert element i referenceSet legges inn som key i refSet
-	}
-	// sjekke at hvert element i requiredSet finnes i refSet:
-	for _, elem := range requiredSet {
-		if _, ok := refSet[elem]; !ok { // sjekker for hver element om element ikke finnes - returnerer da false
 			return false
 		}
+
+	case datatypes.Completed:
+		// If local is Completed, always accept incoming (to stay in sync)
+		switch incomingReq.State {
+		case datatypes.Unassigned, datatypes.Assigned, datatypes.Completed:
+			return true
+		}
 	}
-	return true // ellers returneres true
+	return false
 }
+
+// addIfMissing returns a new awareList that includes ID (if not already present).
+func addIfMissing(awareList []string, ID string) []string {
+    for _, val := range awareList {
+        if val == ID {
+            return awareList
+        }
+    }
+    return append(awareList, ID)
+}
+
+func isContainedIn(requiredSet, referenceSet []string) bool {
+    refMap := make(map[string]struct{}, len(referenceSet))
+    for _, elem := range referenceSet {
+        refMap[elem] = struct{}{}
+    }
+    for _, elem := range requiredSet {
+        if _, ok := refMap[elem]; !ok {
+            return false
+        }
+    }
+    return true
+}
+

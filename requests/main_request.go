@@ -1,7 +1,5 @@
 package requests
 
-// skal håndtere koordinering av knappetrykk, network messages og fordeling av bestillinger mellom heisene
-
 import (
 	"fmt"
 	"project/datatypes"
@@ -20,80 +18,87 @@ const (
 	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
 )
 
-func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
-	completedReqChan <-chan datatypes.ButtonEvent) {
-
+func RequestControlLoop(
+	localID string,
+	reqChan chan<- [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
+	completedReqChan <-chan datatypes.ButtonEvent,
+) {
 	fmt.Println("=== RequestControlLoop startet, ny versjon ===")
 
-	// channel for butten event:
+	// Listen for button events
 	buttenEventChan := make(chan elevio.ButtonEvent)
 	go elevio.PollButtons(buttenEventChan)
 
-	// channels for sending/receiving messages
+	// Network
 	sendMessageChan := make(chan datatypes.NetworkMsg)
 	receiveMessageChan := make(chan datatypes.NetworkMsg)
-	// channels for motta oppdatering om peers
 	peerUpdateChan := make(chan peers.PeerUpdate)
 
-	// go rutines for network:
 	go peers.Receiver(PEER_PORT, peerUpdateChan)
 	go peers.Transmitter(PEER_PORT, localID, nil)
 	go bcast.Receiver(MSG_PORT, receiveMessageChan)
 	go bcast.Transmitter(MSG_PORT, sendMessageChan)
 
+	// Timers
 	broadcastTicker := time.NewTicker(STATUS_UPDATE_INTERVAL_MS * time.Millisecond)
 	assignRequestTicker := time.NewTicker(REQUEST_ASSIGNMENT_INTERVAL_MS * time.Millisecond)
 
 	peerList := []string{}
-
 	isNetworkConnected := false
 
 	hallRequests := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType{}
 	allCabRequests := make(map[string][datatypes.N_FLOORS]datatypes.RequestType)
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
 
-	// initialiserer den lokale heisinformasjonen med localID:
+	// Local elevator info
 	allCabRequests[localID] = [datatypes.N_FLOORS]datatypes.RequestType{}
 	updatedInfoElevs[localID] = elevator_control.GetInfoElev()
 
-	// hovedloop - for-løkke med select
 	for {
 		select {
+
+		// --- Button Press Handling --- //
 		case btn := <-buttenEventChan:
 			fmt.Printf("DEBUG: Mottatt knappetrykk: Floor=%d, Button=%d\n", btn.Floor, btn.Button)
-			request := datatypes.RequestType{}
+			var request datatypes.RequestType
 
+			// Distinguish between cab vs hall calls
 			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
-				request = allCabRequests[localID][btn.Button]
+				request = allCabRequests[localID][btn.Floor]
+				if request.State == datatypes.Unassigned {
+					request.State = datatypes.Assigned
+					request.AwareList = []string{localID}
+				}
 			} else {
 				if !isNetworkConnected {
-					fmt.Println("Network not connected, ignorerer hall request")
-					break // dersom ikke connected skal ikke hallrequesten legges til i requests
+					fmt.Println("Network not connected; ignoring hall request")
+					break
 				}
 				request = hallRequests[btn.Floor][btn.Button]
 			}
-			// switch case for å håndtere statusendringer for en forespørsel, basert på hva som skjer ved knappetrykk
-			fmt.Printf("DEBUG: Før endring: For floor %d, button %d, request state = %v\n", btn.Floor, btn.Button, request.State)
+
+			fmt.Printf("DEBUG: Før endring: Floor=%d, Button=%d, State=%v\n",
+				btn.Floor, btn.Button, request.State)
+
 			switch request.State {
 			case datatypes.Completed:
+				// Pressing again after completed => new request
 				request.State = datatypes.Unassigned
-				request.AwareList = []string{localID} // setter at heis med localID er aware of denne request
-				if isContainedIn(peerList, request.AwareList) {
-					request.State = datatypes.Assigned
-					request.AwareList = []string{localID}
-					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
-				}
+				request.AwareList = []string{localID}
 
 			case datatypes.Unassigned:
-				if isContainedIn(peerList, request.AwareList) {
-					request.State = datatypes.Assigned
-					request.AwareList = []string{localID}
-					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
-				}
-			}
-			fmt.Printf("DEBUG: Etter endring: For floor %d, button %d, request state = %v\n", btn.Floor, btn.Button, request.State)
+				// Just ensure localID is aware. Actual assignment is done later
+				request.AwareList = addIfMissing(request.AwareList, localID)
 
-			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) { // hvis det er en cab button
+			case datatypes.Assigned:
+				// Already assigned => do nothing or custom logic
+			}
+
+			fmt.Printf("DEBUG: Etter endring: Floor=%d, Button=%d, State=%v\n",
+				btn.Floor, btn.Button, request.State)
+
+			// Store updated request
+			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
@@ -101,22 +106,21 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				hallRequests[btn.Floor][btn.Button] = request
 			}
 
+			// --- Calls Completed --- //
 		case btn := <-completedReqChan:
-			request := datatypes.RequestType{}
+			var request datatypes.RequestType
 			if btn.Button == datatypes.BT_CAB {
 				request = allCabRequests[localID][btn.Floor]
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
 			}
-			// switch case med kun en case, for å sikre at det kun er tilfelles Assigned som blir håndtert:
-			switch request.State {
-			case datatypes.Assigned:
+			if request.State == datatypes.Assigned {
 				request.State = datatypes.Completed
 				request.AwareList = []string{localID}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
-
+			// Store updated request back:
 			if btn.Button == datatypes.BT_CAB {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
@@ -124,6 +128,8 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 			} else {
 				hallRequests[btn.Floor][btn.Button] = request
 			}
+
+		// --- Periodic Broadcast --- //
 		case <-broadcastTicker.C:
 			info := elevator_control.GetInfoElev()
 			updatedInfoElevs[localID] = info
@@ -147,12 +153,45 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				sendMessageChan <- newMsg
 			}
 
+			// --- Periodic Assignment --- //
 		case <-assignRequestTicker.C:
-			select {
-			case reqChan <- request_handler.RequestAssigner(hallRequests, allCabRequests, updatedInfoElevs, peerList, localID):
-			default:
+			// Get hall orders from external assigner (for buttons 0 and 1)
+			assignedHallOrders := request_handler.RequestAssigner(
+				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 
+			// Build unified orders array for all buttons (0 & 1 for hall, 2 for cab)
+			var unifiedOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool
+
+			// Merge hall orders: if either the external assigner says true
+			// or the local hall call state is already Assigned, mark it.
+			for f := 0; f < datatypes.N_FLOORS; f++ {
+				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+					if assignedHallOrders[f][b] || (hallRequests[f][b].State == datatypes.Assigned) {
+						unifiedOrders[f][b] = true
+						// Optionally update local state
+						hallRequests[f][b].State = datatypes.Assigned
+						hallRequests[f][b].AwareList = []string{localID}
+						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
+					}
+				}
 			}
+
+			// Merge cab orders (button index 2) from local state:
+			localCabReqs := allCabRequests[localID]
+			for f := 0; f < datatypes.N_FLOORS; f++ {
+				if localCabReqs[f].State == datatypes.Assigned {
+					unifiedOrders[f][datatypes.BT_CAB] = true
+					elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
+				}
+			}
+
+			// Send unified orders to the FSM:
+			select {
+			case reqChan <- unifiedOrders:
+			default:
+			}
+
+		// --- Peer Updates --- //
 		case peer := <-peerUpdateChan:
 			peerList = peer.Peers
 
@@ -163,81 +202,49 @@ func RequestControlLoop(localID string, reqChan chan<- [datatypes.N_FLOORS][data
 				isNetworkConnected = false
 			}
 
-		case msg := <-sendMessageChan:
+		// --- Receiving Network Messages --- //
+		case msg := <-receiveMessageChan:
 			if msg.SenderID == localID {
-				break // godtar ikke message dersom avsender er seg selv
+				break
 			}
 			if !isNetworkConnected {
-				break // godtar ikke message dersom ikke connected til network
+				break
 			}
+
 			updatedInfoElevs[msg.SenderID] = datatypes.ElevatorInfo{
 				Behaviour:    msg.Behavior,
 				Direction:    datatypes.Direction(msg.Direction),
 				Available:    msg.Available,
 				CurrentFloor: msg.Floor,
 			}
-			for ID, cabReqs := range msg.AllCabRequests {
-				if _, IDExists := allCabRequests[ID]; !IDExists {
-					// dette er da første informasjon om denne heisen
-					for floor := range cabReqs {
-						cabReqs[floor].AwareList = addIfMissing(cabReqs[floor].AwareList, localID) // TODO: definere denne
-					}
-					allCabRequests[ID] = cabReqs
-					continue
-				}
-				for f := 0; f < datatypes.N_FLOORS; f++ {
-					if !canAcceptRequest(allCabRequests[ID][f], cabReqs[f]) { // sjekker om request kan aksepteres, hvis ikke hopper over denne f
-						continue
-					}
-					acceptedReqs := cabReqs[f]                                             // request fra aktuell f lagres acceptedReqs
-					acceptedReqs.AwareList = addIfMissing(acceptedReqs.AwareList, localID) // sørger for at localID er med i AwareList
 
-					// sjekker at requesten er unassigned og at alle peers er aware of denne request:
-					if acceptedReqs.State == datatypes.Unassigned && isContainedIn(peerList, acceptedReqs.AwareList) {
-						acceptedReqs.State = datatypes.Assigned
-						acceptedReqs.AwareList = []string{localID}
-					}
-
-					// sjekker at request gjelder lokal heis og om den er assigned:
-					if ID == localID && acceptedReqs.State == datatypes.Assigned {
-						// da settes buttonlamp for å indikere at heisen skal til den f:
-						elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
-					}
-
-					// for å oppdatere allCabRequests:
-					tempCabReqs := allCabRequests[ID]
-					tempCabReqs[f] = acceptedReqs
-					allCabRequests[ID] = tempCabReqs
-				}
-			}
+			// Merge Hall Requests
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
-					// sjekker om inkommende request for gjeldende f og b skal aksepteres, dersom ikke - hopper over denne kombinasjonen
 					if !canAcceptRequest(hallRequests[f][b], msg.SenderHallRequests[f][b]) {
 						continue
 					}
-					acceptedReqs := msg.SenderHallRequests[f][b]
-					// legger til i awareList dersom localID ikke er der:
-					acceptedReqs.AwareList = addIfMissing(acceptedReqs.AwareList, localID)
+					accepted := msg.SenderHallRequests[f][b]
+					accepted.AwareList = addIfMissing(accepted.AwareList, localID)
 
-					// oppdaterer basert på state i acceptedReqs
-					switch acceptedReqs.State {
+					switch accepted.State {
 					case datatypes.Assigned:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 					case datatypes.Unassigned:
-						elevio.SetButtonLamp(elevio.ButtonType(b), f, false) // skrur først av buttonlamp
-						if isContainedIn(peerList, acceptedReqs.AwareList) { // sjekker om alle peers er aware av request
-							acceptedReqs.State = datatypes.Assigned             // endrer da til assigned
-							acceptedReqs.AwareList = []string{localID}          // endrer slik at kun localID er aware
-							elevio.SetButtonLamp(elevio.ButtonType(b), f, true) // skrur på buttonlamp
+						elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
+						// Only auto-promote if not already Completed:
+						if accepted.State != datatypes.Completed && isContainedIn(peerList, accepted.AwareList) {
+							accepted.State = datatypes.Assigned
+							accepted.AwareList = []string{localID}
+							elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 						}
-					case datatypes.Completed: // hvis request er completed - skru av buttonlight
+					case datatypes.Completed:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 					}
-					// oppdaterer hallRequests med aksepterte og evt endrede forespørsler:
-					hallRequests[f][b] = acceptedReqs
+					hallRequests[f][b] = accepted
 				}
 			}
+
 		}
 	}
 }

@@ -7,9 +7,9 @@ import (
 type RequestState int
 
 const (
-	Completed  RequestState = 0
-	Unassigned RequestState = 1
-	Assigned   RequestState = 2
+	Unassigned RequestState = 0
+	Assigned   RequestState = 1
+	Completed  RequestState = 2
 )
 
 type RequestType struct {
