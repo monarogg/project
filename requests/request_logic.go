@@ -61,7 +61,7 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 		if RequestsAbove(elevator) {
 			return datatypes.DIR_UP, datatypes.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_DOWN, datatypes.DoorOpen
+			return datatypes.DIR_UP, datatypes.DoorOpen
 		} else if RequestsBelow(elevator) {
 			return datatypes.DIR_DOWN, datatypes.Moving
 		} else {
@@ -71,7 +71,7 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 		if RequestsAbove(elevator) {
 			return datatypes.DIR_UP, datatypes.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_UP, datatypes.DoorOpen
+			return datatypes.DIR_DOWN, datatypes.DoorOpen
 		} else if RequestsBelow(elevator) {
 			return datatypes.DIR_DOWN, datatypes.Moving
 		} else {
@@ -152,4 +152,16 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 		return !elevator.Orders[currentFloor][datatypes.BT_CAB] && !RequestsAbove(elevator)
 	}
 	return false
+}
+
+func MergeOrders(oldOrders, newOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
+    for f := 0; f < datatypes.N_FLOORS; f++ {
+        for b := 0; b < datatypes.N_BUTTONS; b++ {
+            // If newOrders is true, keep it true
+            if newOrders[f][b] {
+                oldOrders[f][b] = true
+            }
+        }
+    }
+    return oldOrders
 }

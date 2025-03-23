@@ -7,6 +7,7 @@ import (
 	"project/elevio"
 	"project/fsm"
 	"project/requests"
+	"project/config"
 )
 
 func main() {
@@ -23,9 +24,9 @@ func main() {
 	myID := *idFlag
 	port := *portFlag
 
-	elevio.Init("localhost:"+port, datatypes.N_FLOORS)
+	elevio.Init("localhost:"+port, config.N_FLOORS)
 
-	requestsCh := make(chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
+	requestsCh := make(chan [config.N_FLOORS][config.N_BUTTONS]bool)
 	completedRequestCh := make(chan datatypes.ButtonEvent)
 
 	go fsm.RunElevFSM(requestsCh, completedRequestCh)

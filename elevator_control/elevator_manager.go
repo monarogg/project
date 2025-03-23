@@ -24,6 +24,14 @@ func GetInfoElev() datatypes.ElevatorInfo {
 
 // oppdaterer info om heis
 func UpdateInfoElev(elevator datatypes.Elevator) {
+	if (elevator.CurrentFloor == 0 && elevator.Direction == datatypes.DIR_DOWN) ||
+	   (elevator.CurrentFloor == config.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP) {
+		elevator.Direction = datatypes.DIR_STOP
+		if elevator.State == datatypes.Moving {
+			elevator.State = datatypes.Idle
+		}
+	}
+
 	sharedInfoElevs.Mutex.Lock()
 	defer sharedInfoElevs.Mutex.Unlock()
 
@@ -31,6 +39,8 @@ func UpdateInfoElev(elevator datatypes.Elevator) {
 	sharedInfoElevs.Direction = elevator.Direction
 	sharedInfoElevs.CurrentFloor = elevator.CurrentFloor
 }
+
+
 
 // endrer tilgjengelighet til heisen basert på val
 func SetElevAvailability(val bool) {

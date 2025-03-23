@@ -2,6 +2,7 @@ package requests
 
 import (
 	"fmt"
+	"project/config"
 	"project/datatypes"
 	"project/elevator_control"
 	"project/elevio"
@@ -9,7 +10,6 @@ import (
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
 	"time"
-	"project/config"
 )
 
 const (
@@ -66,10 +66,28 @@ func RequestControlLoop(
 			// Distinguish between cab vs hall calls
 			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
 				request = allCabRequests[localID][btn.Floor]
-				if request.State == datatypes.Unassigned {
+
+				switch request.State {
+				case datatypes.Completed:
+					// Pressed again after completed => new request
 					request.State = datatypes.Assigned
 					request.AwareList = []string{localID}
+					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+
+				case datatypes.Unassigned:
+					// Normal new cab call
+					request.State = datatypes.Assigned
+					request.AwareList = []string{localID}
+					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
+
+				case datatypes.Assigned:
+					// Already assigned => do nothing or custom logic
 				}
+
+				// Save back to local array
+				localCabReqs := allCabRequests[localID]
+				localCabReqs[btn.Floor] = request
+				allCabRequests[localID] = localCabReqs
 			} else {
 				if !isNetworkConnected {
 					fmt.Println("Network not connected; ignoring hall request")
@@ -156,37 +174,39 @@ func RequestControlLoop(
 
 			// --- Periodic Assignment --- //
 		case <-assignRequestTicker.C:
-			// Get hall orders from external assigner (for buttons 0 and 1)
+			// 1) Get hall orders from external assigner
 			assignedHallOrders := request_handler.RequestAssigner(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 
-			// Build unified orders array for all buttons (0 & 1 for hall, 2 for cab)
+			// 2) Build unified orders array for 0 & 1 (hall) and 2 (cab)
 			var unifiedOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool
 
-			// Merge hall orders: if either the external assigner says true
-			// or the local hall call state is already Assigned, mark it.
+			// 3) Merge hall calls
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+					// If external says true OR local is assigned
 					if assignedHallOrders[f][b] || (hallRequests[f][b].State == datatypes.Assigned) {
 						unifiedOrders[f][b] = true
-						// Optionally update local state
+						// Optionally set local state to assigned
 						hallRequests[f][b].State = datatypes.Assigned
 						hallRequests[f][b].AwareList = []string{localID}
+						// Turn on hall lamp
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 					}
 				}
 			}
 
-			// Merge cab orders (button index 2) from local state:
+			// 4) Merge local cab calls (button index 2)
 			localCabReqs := allCabRequests[localID]
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				if localCabReqs[f].State == datatypes.Assigned {
 					unifiedOrders[f][datatypes.BT_CAB] = true
+					// Turn on cab lamp
 					elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
 				}
 			}
 
-			// Send unified orders to the FSM:
+			// 5) Send orders to the FSM
 			select {
 			case reqChan <- unifiedOrders:
 			default:
@@ -227,7 +247,6 @@ func RequestControlLoop(
 					}
 					accepted := msg.SenderHallRequests[f][b]
 					accepted.AwareList = addIfMissing(accepted.AwareList, localID)
-
 					switch accepted.State {
 					case datatypes.Assigned:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
