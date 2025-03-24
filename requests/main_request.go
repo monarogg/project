@@ -158,7 +158,7 @@ func RequestControlLoop(
 				Available:          info.Available,
 				Behavior:           info.Behaviour,
 				Floor:              info.CurrentFloor,
-				Direction:          elevio.MotorDirection(info.Direction),
+				Direction:          elevator_control.DirConv(info.Direction),
 				SenderHallRequests: hallRequests,
 				AllCabRequests:     allCabRequests,
 			}
@@ -207,6 +207,8 @@ func RequestControlLoop(
 			}
 
 			// 5) Send orders to the FSM
+			fmt.Println("Sending updated orders to FSM:", unifiedOrders)
+
 			select {
 			case reqChan <- unifiedOrders:
 			default:

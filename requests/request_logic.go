@@ -36,6 +36,7 @@ func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/fa
 }
 
 func RequestsHere(elevator datatypes.Elevator) bool {
+	fmt.Println("RequestsHere check at floor", elevator.CurrentFloor, "orders:", elevator.Orders[elevator.CurrentFloor])
 	for b := 0; b < datatypes.N_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
 			return true
@@ -103,23 +104,32 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 
 
 func ShouldStop(elevator datatypes.Elevator) bool {
-	currentFloor := elevator.CurrentFloor
+	floor := elevator.CurrentFloor
 	switch elevator.Direction {
-	case datatypes.DIR_DOWN:
-		return elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
-			elevator.Orders[currentFloor][datatypes.BT_CAB] ||
-			!RequestsBelow(elevator)
 	case datatypes.DIR_UP:
-		return elevator.Orders[currentFloor][datatypes.BT_HallUP] ||
-			elevator.Orders[currentFloor][datatypes.BT_CAB] ||
-			!RequestsAbove(elevator)
+		if elevator.Orders[floor][datatypes.BT_HallUP] ||
+			elevator.Orders[floor][datatypes.BT_CAB] {
+			return true
+		}
+		if !RequestsAbove(elevator) && elevator.Orders[floor][datatypes.BT_HallDOWN] {
+			return true
+		}
+	case datatypes.DIR_DOWN:
+		if elevator.Orders[floor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[floor][datatypes.BT_CAB] {
+			return true
+		}
+		if !RequestsBelow(elevator) && elevator.Orders[floor][datatypes.BT_HallUP] {
+			return true
+		}
 	case datatypes.DIR_STOP:
-		return elevator.Orders[currentFloor][datatypes.BT_HallUP] ||
-			elevator.Orders[currentFloor][datatypes.BT_HallDOWN] ||
-			elevator.Orders[currentFloor][datatypes.BT_CAB]
+		return elevator.Orders[floor][datatypes.BT_HallUP] ||
+			elevator.Orders[floor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[floor][datatypes.BT_CAB]
 	}
-	return true
+	return false
 }
+
 
 
 func CanClearCab(elevator datatypes.Elevator) bool {

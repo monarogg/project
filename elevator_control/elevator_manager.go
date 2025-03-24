@@ -51,22 +51,30 @@ func SetElevAvailability(val bool) {
 }
 
 // initialiserer heisen, vet da ikke hvilken etasje den er i - må få gyldig etasje
-func InitElevator(chanFloorSensor <-chan int) datatypes.Elevator {
-	elevio.SetDoorOpenLamp(false) // slår av lampe for door open
+func InitElevator() datatypes.Elevator {
+	elevio.SetDoorOpenLamp(false)
 
-	// slår av alle etasjelys
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_BUTTONS; b++ {
 			elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 		}
 	}
 
-	elevio.SetMotorDirection(elevio.MD_Down) // setter retning ned for å finne gyldig etasje
-	currentFloor := <-chanFloorSensor        // venter på etasje sensor til å angi en etasje
-	elevio.SetMotorDirection(elevio.MD_Stop) // stopper heisen i den funnede etasjen
-	elevio.SetFloorIndicator(currentFloor)   // oppdaterer heisens etasje med lampe
+	elevio.SetMotorDirection(elevio.MD_Down)
+	currentFloor := -1
+	for currentFloor == -1 {
+		currentFloor = elevio.GetFloor()
+		time.Sleep(10 * time.Millisecond)
+	}
+	elevio.SetMotorDirection(elevio.MD_Stop)
+	elevio.SetFloorIndicator(currentFloor)
 
-	return datatypes.Elevator{CurrentFloor: currentFloor, Direction: datatypes.DIR_STOP, Orders: [config.N_FLOORS][config.N_BUTTONS]bool{}, State: datatypes.Idle}
+	return datatypes.Elevator{
+		CurrentFloor: currentFloor,
+		Direction:    datatypes.DIR_STOP,
+		State:        datatypes.Idle,
+		Orders:       [config.N_FLOORS][config.N_BUTTONS]bool{},
+	}
 }
 
 // starter/nullstiller en timer til et nytt antall sekunder
