@@ -55,19 +55,8 @@ func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
 }
 
 func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datatypes.ElevBehaviour) {
-	// switch case basert på direction til heisen:
 	switch elevator.Direction {
 	case datatypes.DIR_UP:
-		if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
-		} else if RequestsHere(elevator) {
-			return datatypes.DIR_UP, datatypes.DoorOpen
-		} else if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
-		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
-		}
-	case datatypes.DIR_DOWN:
 		if RequestsAbove(elevator) {
 			return datatypes.DIR_UP, datatypes.Moving
 		} else if RequestsHere(elevator) {
@@ -77,10 +66,20 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 		} else {
 			return datatypes.DIR_STOP, datatypes.Idle
 		}
-	case datatypes.DIR_STOP:
-		if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+
+	case datatypes.DIR_DOWN:
+		if RequestsBelow(elevator) {
+			return datatypes.DIR_DOWN, datatypes.Moving
 		} else if RequestsHere(elevator) {
+			return datatypes.DIR_UP, datatypes.DoorOpen
+		} else if RequestsAbove(elevator) {
+			return datatypes.DIR_UP, datatypes.Moving
+		} else {
+			return datatypes.DIR_STOP, datatypes.Idle
+		}
+
+	case datatypes.DIR_STOP:
+		if RequestsHere(elevator) {
 			switch getReqTypeHere(elevator) {
 			case datatypes.BT_HallUP:
 				return datatypes.DIR_UP, datatypes.DoorOpen
@@ -89,6 +88,8 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 			case datatypes.BT_CAB:
 				return datatypes.DIR_STOP, datatypes.DoorOpen
 			}
+		} else if RequestsAbove(elevator) {
+			return datatypes.DIR_UP, datatypes.Moving
 		} else if RequestsBelow(elevator) {
 			return datatypes.DIR_DOWN, datatypes.Moving
 		} else {
@@ -97,10 +98,9 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 	}
 
 	fmt.Println("Debug: Choosing Direction. Orders:", elevator.Orders, "Current Floor:", elevator.CurrentFloor)
-
 	return datatypes.DIR_STOP, datatypes.Idle
-
 }
+
 
 func ShouldStop(elevator datatypes.Elevator) bool {
 	currentFloor := elevator.CurrentFloor
@@ -132,10 +132,10 @@ func CanClearHallUp(elevator datatypes.Elevator) bool {
 		return false
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_STOP, datatypes.DIR_UP:
+	case datatypes.DIR_UP, datatypes.DIR_STOP:
 		return true
 	case datatypes.DIR_DOWN:
-		return !elevator.Orders[currentFloor][datatypes.BT_CAB] && !RequestsBelow(elevator)
+		return !RequestsBelow(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallDOWN]
 	}
 	return false
 }
@@ -149,10 +149,11 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 	case datatypes.DIR_DOWN, datatypes.DIR_STOP:
 		return true
 	case datatypes.DIR_UP:
-		return !elevator.Orders[currentFloor][datatypes.BT_CAB] && !RequestsAbove(elevator)
+		return !RequestsAbove(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallUP]
 	}
 	return false
 }
+
 
 func MergeOrders(oldOrders, newOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
     for f := 0; f < datatypes.N_FLOORS; f++ {
