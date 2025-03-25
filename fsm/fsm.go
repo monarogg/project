@@ -126,7 +126,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool,
 package fsm
 
 import (
-	"project/config"
+	//"project/config"
+	"fmt"
 	"project/datatypes"
 	"project/elevator_control"
 	"project/elevio"
@@ -158,6 +159,15 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 	for {
 		select {
 		case elevator.Orders = <-reqChan:
+			fmt.Println("FSM: Received new orders:")
+			for f := 0; f < datatypes.N_FLOORS; f++ {
+				for b := 0; b < datatypes.N_BUTTONS; b++ {
+					if elevator.Orders[f][b] {
+						fmt.Printf(" - Order at floor %d, button %d\n", f, b)
+					}
+				}
+			}
+
 			if elevator.State != datatypes.Idle {
 				break
 			}
@@ -202,11 +212,17 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
 
-			// Clamp direction AFTER handling stop logic
+			// Clamp direction AND stop motor if at terminal floor
 			if elevator.CurrentFloor == 0 && elevator.Direction == datatypes.DIR_DOWN {
 				elevator.Direction = datatypes.DIR_STOP
-			} else if elevator.CurrentFloor == config.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP {
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				elevator_control.KillTimer(movementTimer)
+				elevator.State = datatypes.DoorOpen
+			} else if elevator.CurrentFloor == 3 && elevator.Direction == datatypes.DIR_UP {
 				elevator.Direction = datatypes.DIR_STOP
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				elevator_control.KillTimer(movementTimer)
+				elevator.State = datatypes.DoorOpen
 			}
 
 			elevator_control.UpdateInfoElev(elevator)
@@ -236,6 +252,23 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 
 			if cleared {
 				elevio.SetDoorOpenLamp(false)
+
+				elevio.SetDoorOpenLamp(false)
+
+				if !requests.RequestsAbove(elevator) && !requests.RequestsBelow(elevator) && !requests.RequestsHere(elevator) {
+					elevator.State = datatypes.Idle
+					elevator.Direction = datatypes.DIR_STOP
+				} else {
+					elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+				}
+
+				switch elevator.State {
+				case datatypes.DoorOpen:
+					elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				case datatypes.Moving:
+					elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+					elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
+				}
 			}
 
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)

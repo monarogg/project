@@ -19,7 +19,7 @@ func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 		return true
 	}
 	// Same count, same state, and identical awareness → nothing new → reject
-	if incomingReq.State == localReq.State && isContainedIn(incomingReq.AwareList, localReq.AwareList) {
+	if incomingReq.State == localReq.State && IsContainedIn(incomingReq.AwareList, localReq.AwareList) {
 		return false
 	}
 
@@ -56,7 +56,7 @@ func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 }
 
 // addIfMissing returns a new awareList that includes ID (if not already present).
-func addIfMissing(awareList []string, ID string) []string {
+func AddIfMissing(awareList []string, ID string) []string {
     for _, val := range awareList {
         if val == ID {
             return awareList
@@ -65,7 +65,7 @@ func addIfMissing(awareList []string, ID string) []string {
     return append(awareList, ID)
 }
 
-func isContainedIn(requiredSet, referenceSet []string) bool {
+func IsContainedIn(requiredSet, referenceSet []string) bool {
     refMap := make(map[string]struct{}, len(referenceSet))
     for _, elem := range referenceSet {
         refMap[elem] = struct{}{}
@@ -77,4 +77,11 @@ func isContainedIn(requiredSet, referenceSet []string) bool {
     }
     return true
 }
+
+func IsSoleAssignee(req datatypes.RequestType, localID string, peerList []string) bool {
+	return req.State == datatypes.Assigned &&
+		len(req.AwareList) == 1 &&
+		req.AwareList[0] == localID
+}
+
 

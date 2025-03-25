@@ -26,7 +26,7 @@ func RequestAssigner(
 	updatedInfoElevs map[string]datatypes.ElevatorInfo,
 	peerList []string,
 	localID string,
-) [config.N_FLOORS][config.N_BUTTONS]bool {
+) map[string][config.N_FLOORS][config.N_BUTTONS]bool {
 
 	fmt.Println("Start RequestAssigner")
 	fmt.Println("Mottatt hallRequests:", hallRequests)
@@ -37,31 +37,20 @@ func RequestAssigner(
 
 	hraPath := "./hall_request_assigner"
 
-	// Build input for HRA
 	hallRequestsBool := [config.N_FLOORS][config.N_HALL_BUTTONS]bool{}
-
-	fmt.Println("Debug: Checking Hall Request State Before Assignment")
-	for f := 0; f < config.N_FLOORS; f++ {
-		for b := 0; b < config.N_HALL_BUTTONS; b++ {
-			s := hallRequests[f][b].State
-			fmt.Printf("Floor %d, Button %d, State: %d\n", f, b, s)
-		}
-	}
-
-	// Only add Unassigned hall calls for external assignment
+	
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
-			if (req.State == datatypes.Unassigned && isActiveRequest(req)) ||
-				(req.State == datatypes.Assigned && contains(req.AwareList, localID)) {
+			if req.State == datatypes.Unassigned && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
 			}
 		}
 	}
+	
 
+	// Prepare elevator state input
 	inputStates := map[string]HRAElevState{}
-
-	fmt.Println("Debug: Checking Cab Request State Before Assignment")
 	for ID, cabReqs := range allCabRequests {
 		elevInfo, ok := updatedInfoElevs[ID]
 		if !ok || !elevInfo.Available {
@@ -73,8 +62,6 @@ func RequestAssigner(
 				cabs[f] = true
 			}
 		}
-		fmt.Println("Elevator:", ID, "Cab Requests:", cabs)
-
 		inputStates[ID] = HRAElevState{
 			Behavior:    behToS(elevInfo.Behaviour),
 			Floor:       elevInfo.CurrentFloor,
@@ -83,9 +70,8 @@ func RequestAssigner(
 		}
 	}
 
-	// If no active elevators available, do nothing
 	if len(inputStates) == 0 {
-		return [config.N_FLOORS][config.N_BUTTONS]bool{}
+		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
 
 	input := HRAInput{
@@ -93,32 +79,30 @@ func RequestAssigner(
 		States:       inputStates,
 	}
 
-	fmt.Println("Final Hall Requests before sending:", hallRequestsBool)
-	fmt.Println("Final Cab Requests before sending:", inputStates)
-
 	jsonBytes, err := json.Marshal(input)
 	if err != nil {
 		fmt.Println("JSON Marshal Error:", err)
-		return [config.N_FLOORS][config.N_BUTTONS]bool{}
+		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
-	fmt.Println("Final JSON Payload:", string(jsonBytes))
 
 	cmd := exec.Command(hraPath, "-i", string(jsonBytes), "--includeCab")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error:", err)
 		fmt.Println("Command output:", string(out))
-		return [config.N_FLOORS][config.N_BUTTONS]bool{}
+		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
 	if err = json.Unmarshal(out, &output); err != nil {
 		fmt.Println("json.Unmarshal error:", err)
-		return [config.N_FLOORS][config.N_BUTTONS]bool{}
+		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
 
 	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
-	return (*output)[localID]
+	fmt.Println("Full assignment result:", *output)
+
+	return *output
 }
 
 func dirToS(dir datatypes.Direction) string {

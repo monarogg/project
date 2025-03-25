@@ -33,4 +33,5 @@ type NetworkMsg struct {
 	Floor              int
 	SenderHallRequests [N_FLOORS][N_HALL_BUTTONS]RequestType
 	AllCabRequests     map[string][N_FLOORS]RequestType
+	DebugLog		   string
 }
