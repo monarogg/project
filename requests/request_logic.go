@@ -108,30 +108,27 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 
 func ShouldStop(elevator datatypes.Elevator) bool {
 	floor := elevator.CurrentFloor
+
 	switch elevator.Direction {
 	case datatypes.DIR_UP:
-		if elevator.Orders[floor][datatypes.BT_HallUP] ||
-			elevator.Orders[floor][datatypes.BT_CAB] {
-			return true
-		}
-		if !RequestsAbove(elevator) && elevator.Orders[floor][datatypes.BT_HallDOWN] {
-			return true
-		}
+		return elevator.Orders[floor][datatypes.BT_HallUP] ||
+			elevator.Orders[floor][datatypes.BT_CAB] ||
+			!RequestsAbove(elevator)
+
 	case datatypes.DIR_DOWN:
-		if elevator.Orders[floor][datatypes.BT_HallDOWN] ||
-			elevator.Orders[floor][datatypes.BT_CAB] {
-			return true
-		}
-		if !RequestsBelow(elevator) && elevator.Orders[floor][datatypes.BT_HallUP] {
-			return true
-		}
+		return elevator.Orders[floor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[floor][datatypes.BT_CAB] ||
+			!RequestsBelow(elevator)
+
 	case datatypes.DIR_STOP:
 		return elevator.Orders[floor][datatypes.BT_HallUP] ||
 			elevator.Orders[floor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[floor][datatypes.BT_CAB]
 	}
+
 	return false
 }
+
 
 
 
