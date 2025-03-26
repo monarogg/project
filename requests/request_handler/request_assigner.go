@@ -38,30 +38,52 @@ func RequestAssigner(
 	hraPath := "./hall_request_assigner"
 
 	hallRequestsBool := [config.N_FLOORS][config.N_HALL_BUTTONS]bool{}
-	
+
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
+
+			// Filter AwareList to remove unavailable elevators
+			filteredAware := []string{}
+			for _, id := range req.AwareList {
+				if info, ok := updatedInfoElevs[id]; ok && info.Available {
+					filteredAware = append(filteredAware, id)
+				}
+			}
+			req.AwareList = filteredAware
+
+			if req.State == datatypes.Assigned && !contains(req.AwareList, localID) {
+				if len(req.AwareList) == 0 || !contains(peerList, req.AwareList[0]) {
+					fmt.Printf("[DEMOTE] Lost assigned elevator for Floor %d Button %d. Resetting to Unassigned.\n", f, b)
+					req.State = datatypes.Unassigned
+				}
+			}
+
+			hallRequests[f][b] = req
+
 			if req.State == datatypes.Unassigned && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
 			}
+			fmt.Printf("[ASSIGNER] Ready for assignment: Floor %d Button %d | State=%v | AwareList=%v\n",
+				f, b, req.State, req.AwareList)
+
 		}
 	}
-	
 
 	// Prepare elevator state input
 	inputStates := map[string]HRAElevState{}
 	for ID, cabReqs := range allCabRequests {
 		elevInfo, ok := updatedInfoElevs[ID]
-		if !ok || !elevInfo.Available {
+		if !ok || !elevInfo.Available || !contains(peerList, ID) {
 			continue
 		}
 		cabs := [config.N_FLOORS]bool{}
 		for f := 0; f < config.N_FLOORS; f++ {
-			if cabReqs[f].State == datatypes.Assigned {
+			if isActiveRequest(cabReqs[f]) {
 				cabs[f] = true
 			}
 		}
+
 		inputStates[ID] = HRAElevState{
 			Behavior:    behToS(elevInfo.Behaviour),
 			Floor:       elevInfo.CurrentFloor,
@@ -85,7 +107,9 @@ func RequestAssigner(
 		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
 
-	cmd := exec.Command(hraPath, "-i", string(jsonBytes), "--includeCab")
+	fmt.Println("Sending to HRA JSON:\n", string(jsonBytes))
+
+	cmd := exec.Command(hraPath, "-i", string(jsonBytes), "--includeCab", "--costFn=Basic")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("exec.Command error:", err)
@@ -95,8 +119,6 @@ func RequestAssigner(
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
 
-
-	
 	if err = json.Unmarshal(out, &output); err != nil {
 		fmt.Println("json.Unmarshal error:", err)
 		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
@@ -104,6 +126,21 @@ func RequestAssigner(
 
 	fmt.Println("Final assigned hallRequests for", localID, ":", (*output)[localID])
 	fmt.Println("Full assignment result:", *output)
+
+	// Update internal hallRequests with assignments
+	for f := 0; f < config.N_FLOORS; f++ {
+		for b := 0; b < config.N_HALL_BUTTONS; b++ {
+			for assignedTo, assignedMatrix := range *output {
+				if assignedMatrix[f][b] {
+					hallRequests[f][b] = datatypes.RequestType{
+						State:     datatypes.Assigned,
+						AwareList: []string{assignedTo},
+					}
+					fmt.Printf("[ASSIGNED] Floor %d Button %d to %s\n", f, b, assignedTo)
+				}
+			}
+		}
+	}
 
 	return *output
 }

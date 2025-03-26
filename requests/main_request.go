@@ -177,16 +177,28 @@ func RequestControlLoop(
 			if isNetworkConnected {
 				sendMessageChan <- newMsg
 			}
+
 		case <-assignRequestTicker.C:
-			// 1) Demote requests with multiple awareList entries
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
+
+					// Remove unavailable elevators from AwareList
+					filtered := []string{}
+					for _, id := range req.AwareList {
+						if contains(peerList, id) {
+							filtered = append(filtered, id)
+						}
+					}
+					req.AwareList = filtered
+
+					// Demote if assigned but not solely to this elevator
 					if req.State == datatypes.Assigned && !IsSoleAssignee(req, localID, peerList) {
 						fmt.Printf("DEMOTED: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
 						req.State = datatypes.Unassigned
-						hallRequests[f][b] = req
 					}
+
+					hallRequests[f][b] = req
 				}
 			}
 
@@ -214,7 +226,7 @@ func RequestControlLoop(
 							}
 						}
 					}
-					
+
 				}
 			}
 
@@ -227,8 +239,10 @@ func RequestControlLoop(
 				}
 			}
 
+			fmt.Println("RA: assignedHallOrders:", assignedHallOrders)
+			fmt.Println("RA: Sending unifiedOrders to FSM:", unifiedOrders)
+
 			// 5) Send orders to FSM
-			fmt.Println("Sending updated orders to FSM:", unifiedOrders)
 			select {
 			case reqChan <- unifiedOrders:
 			default:

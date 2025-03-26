@@ -79,9 +79,16 @@ func IsContainedIn(requiredSet, referenceSet []string) bool {
 }
 
 func IsSoleAssignee(req datatypes.RequestType, localID string, peerList []string) bool {
-	return req.State == datatypes.Assigned &&
-		len(req.AwareList) == 1 &&
-		req.AwareList[0] == localID
+	count := 0
+	for _, id := range req.AwareList {
+		for _, peer := range peerList {
+			if id == peer {
+				count++
+			}
+		}
+	}
+	return count == 1 && contains(req.AwareList, localID)
 }
+
 
 

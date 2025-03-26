@@ -109,16 +109,35 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 func ShouldStop(elevator datatypes.Elevator) bool {
 	floor := elevator.CurrentFloor
 
+	fmt.Printf("DEBUG ShouldStop: Floor=%d Dir=%v Up=%v Down=%v Cab=%v Above=%v Below=%v\n",
+		floor,
+		elevator.Direction,
+		elevator.Orders[floor][datatypes.BT_HallUP],
+		elevator.Orders[floor][datatypes.BT_HallDOWN],
+		elevator.Orders[floor][datatypes.BT_CAB],
+		RequestsAbove(elevator),
+		RequestsBelow(elevator),
+	)
+
 	switch elevator.Direction {
 	case datatypes.DIR_UP:
-		return elevator.Orders[floor][datatypes.BT_HallUP] ||
-			elevator.Orders[floor][datatypes.BT_CAB] ||
-			!RequestsAbove(elevator)
+		if elevator.Orders[floor][datatypes.BT_HallUP] ||
+			elevator.Orders[floor][datatypes.BT_CAB] {
+			return true
+		}
+		// End of line fallback:
+		if !RequestsAbove(elevator) && elevator.Orders[floor][datatypes.BT_HallDOWN] {
+			return true
+		}
 
 	case datatypes.DIR_DOWN:
-		return elevator.Orders[floor][datatypes.BT_HallDOWN] ||
-			elevator.Orders[floor][datatypes.BT_CAB] ||
-			!RequestsBelow(elevator)
+		if elevator.Orders[floor][datatypes.BT_HallDOWN] ||
+			elevator.Orders[floor][datatypes.BT_CAB] {
+			return true
+		}
+		if !RequestsBelow(elevator) && elevator.Orders[floor][datatypes.BT_HallUP] {
+			return true
+		}
 
 	case datatypes.DIR_STOP:
 		return elevator.Orders[floor][datatypes.BT_HallUP] ||

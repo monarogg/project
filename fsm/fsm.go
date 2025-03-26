@@ -33,22 +33,22 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 
 	for {
 		select {
-		case elevator.Orders = <-reqChan:
+		case newOrders := <-reqChan:
 			fmt.Println("FSM: Received new orders:")
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_BUTTONS; b++ {
-					if elevator.Orders[f][b] {
+					if newOrders[f][b] {
 						fmt.Printf(" - Order at floor %d, button %d\n", f, b)
 					}
 				}
 			}
+			elevator.Orders = newOrders
 
 			if elevator.State != datatypes.Idle {
 				break
 			}
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
 			fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
-
 
 			switch elevator.State {
 			case datatypes.DoorOpen:
@@ -61,21 +61,60 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			elevator_control.UpdateInfoElev(elevator)
 
 		case newFloor := <-floorSensorChan:
+
+			if newFloor == 0 && elevator.Direction == datatypes.DIR_DOWN {
+				fmt.Println("FSM: Clamped at bottom floor")
+				elevator.CurrentFloor = newFloor
+				elevio.SetFloorIndicator(newFloor)
+				elevator.Direction = datatypes.DIR_STOP
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				elevator_control.KillTimer(movementTimer)
+				elevator.State = datatypes.DoorOpen
+				elevio.SetDoorOpenLamp(true)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.UpdateInfoElev(elevator)
+
+				elevator.Orders[newFloor][datatypes.BT_HallUP] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
+
+				break
+			}
+
+			if newFloor == datatypes.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP {
+				fmt.Println("FSM: Clamped at top floor")
+				elevator.CurrentFloor = newFloor
+				elevio.SetFloorIndicator(newFloor)
+				elevator.Direction = datatypes.DIR_STOP
+				elevio.SetMotorDirection(elevio.MD_Stop)
+				elevator_control.KillTimer(movementTimer)
+				elevator.State = datatypes.DoorOpen
+				elevio.SetDoorOpenLamp(true)
+				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.UpdateInfoElev(elevator)
+
+				elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
+
+				break
+			}
+
 			fmt.Println("FSM: Floor sensor triggered, floor =", newFloor)
 			elevator.CurrentFloor = newFloor
 			elevio.SetFloorIndicator(newFloor)
-		
+
 			if elevator.State != datatypes.Moving {
 				break
 			}
-		
+
 			elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 			elevator_control.SetElevAvailability(true)
-		
+
+			fmt.Printf("FSM: Checking ShouldStop at floor %d -> %v | Orders: %v\n", newFloor, requests.ShouldStop(elevator), elevator.Orders[newFloor])
+
 			if requests.ShouldStop(elevator) {
 				elevator_control.KillTimer(movementTimer)
 				elevio.SetMotorDirection(elevio.MotorDirection(datatypes.DIR_STOP))
-		
+
 				if requests.CanClearHallUp(elevator) {
 					elevator.Orders[newFloor][datatypes.BT_HallUP] = false
 					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
@@ -88,14 +127,14 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 					elevator.Orders[newFloor][datatypes.BT_CAB] = false
 					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_CAB}
 				}
-		
-				elevio.SetDoorOpenLamp(true)
+
 				elevator.State = datatypes.DoorOpen
+				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
-		
+
 			elevator_control.UpdateInfoElev(elevator)
-		
+
 		case isObstructed := <-obstructionChan:
 			if isObstructed {
 				elevator_control.SetElevAvailability(false)
@@ -120,8 +159,6 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			}
 
 			if cleared {
-				elevio.SetDoorOpenLamp(false)
-
 				elevio.SetDoorOpenLamp(false)
 
 				if !requests.RequestsAbove(elevator) && !requests.RequestsBelow(elevator) && !requests.RequestsHere(elevator) {
