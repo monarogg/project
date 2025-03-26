@@ -200,10 +200,10 @@ func RequestControlLoop(
 			// 3) Apply only orders that this elevator is allowed to take
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
-					if assignedHallOrders[f][b] && hallRequests[f][b].State != datatypes.Assigned {
-						// Assign only if it's not already owned by someone
+					if assignedHallOrders[f][b] && IsSoleAssignee(hallRequests[f][b], localID, peerList) {
 						hallRequests[f][b].State = datatypes.Assigned
 						hallRequests[f][b].AwareList = []string{localID}
+					
 						unifiedOrders[f][b] = true
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 						fmt.Printf("[ASSIGNED] Floor %d Button %d to %s\n", f, b, localID)
