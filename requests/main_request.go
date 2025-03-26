@@ -22,7 +22,7 @@ const (
 func RequestControlLoop(
 	localID string,
 	reqChan chan<- [config.N_FLOORS][config.N_BUTTONS]bool,
-	completedReqChan <-chan datatypes.ButtonEvent,
+	completedReqChan chan datatypes.ButtonEvent,
 ) {
 	fmt.Println("=== RequestControlLoop startet, ny versjon ===")
 
@@ -126,6 +126,17 @@ func RequestControlLoop(
 			} else {
 				if btn.Floor >= 0 && btn.Floor < datatypes.N_FLOORS && btn.Button >= 0 && btn.Button < datatypes.N_HALL_BUTTONS {
 					hallRequests[btn.Floor][btn.Button] = request
+
+					// --- IMMEDIATE SERVE IF AT FLOOR AND IDLE/DOOROPEN --- //
+					info := updatedInfoElevs[localID]
+					if btn.Floor == info.CurrentFloor &&
+						(info.Behaviour == datatypes.Idle || info.Behaviour == datatypes.DoorOpen) {
+
+						request.State = datatypes.Assigned
+						request.AwareList = []string{localID}
+						hallRequests[btn.Floor][btn.Button] = request
+					}
+
 				} else {
 					fmt.Printf("ERROR: Invalid HALL button event: Floor=%d, Button=%d\n", btn.Floor, btn.Button)
 				}
@@ -139,13 +150,15 @@ func RequestControlLoop(
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
 			}
+		
 			if request.State == datatypes.Assigned {
 				request.State = datatypes.Completed
 				request.AwareList = []string{localID}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
-			// Store updated request back:
+			
+		
 			if btn.Button == datatypes.BT_CAB {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
@@ -153,6 +166,7 @@ func RequestControlLoop(
 			} else {
 				hallRequests[btn.Floor][btn.Button] = request
 			}
+		
 
 		// --- Periodic Broadcast --- //
 		case <-broadcastTicker.C:
