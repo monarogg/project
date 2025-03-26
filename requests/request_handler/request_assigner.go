@@ -61,7 +61,7 @@ func RequestAssigner(
 
 			hallRequests[f][b] = req
 
-			if req.State == datatypes.Unassigned && isActiveRequest(req) {
+			if req.State != datatypes.Completed && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
 			}
 			fmt.Printf("[ASSIGNER] Ready for assignment: Floor %d Button %d | State=%v | AwareList=%v\n",

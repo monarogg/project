@@ -74,10 +74,16 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
-				elevator.Orders[newFloor][datatypes.BT_HallUP] = false
-				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
-
+				if elevator.Orders[newFloor][datatypes.BT_HallDOWN] {
+					elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
+				}
+				if elevator.Orders[newFloor][datatypes.BT_HallUP] {
+					elevator.Orders[newFloor][datatypes.BT_HallUP] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
+				}
 				break
+
 			}
 
 			if newFloor == datatypes.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP {
@@ -92,10 +98,16 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
-				elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
-				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
-
+				if elevator.Orders[newFloor][datatypes.BT_HallDOWN] {
+					elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
+				}
+				if elevator.Orders[newFloor][datatypes.BT_HallUP] {
+					elevator.Orders[newFloor][datatypes.BT_HallUP] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
+				}
 				break
+
 			}
 
 			fmt.Println("FSM: Floor sensor triggered, floor =", newFloor)
@@ -131,6 +143,15 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				elevator.State = datatypes.DoorOpen
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+
+				for btn := 0; btn < datatypes.N_HALL_BUTTONS; btn++ {
+					if elevator.Orders[newFloor][btn] {
+						completedReqChan <- datatypes.ButtonEvent{
+							Floor:  newFloor,
+							Button: datatypes.ButtonType(btn),
+						}
+					}
+				}
 			}
 
 			elevator_control.UpdateInfoElev(elevator)

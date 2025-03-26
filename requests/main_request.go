@@ -133,26 +133,16 @@ func RequestControlLoop(
 
 			// --- Calls Completed --- //
 		case btn := <-completedReqChan:
-			var request datatypes.RequestType
-			if btn.Button == datatypes.BT_CAB {
-				request = allCabRequests[localID][btn.Floor]
-			} else {
-				request = hallRequests[btn.Floor][btn.Button]
-			}
-			if request.State == datatypes.Assigned {
-				request.State = datatypes.Completed
-				request.AwareList = []string{localID}
-				request.Count++
-				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
-			}
-			// Store updated request back:
 			if btn.Button == datatypes.BT_CAB {
 				localCabReqs := allCabRequests[localID]
-				localCabReqs[btn.Floor] = request
+				localCabReqs[btn.Floor] = datatypes.RequestType{}
 				allCabRequests[localID] = localCabReqs
 			} else {
-				hallRequests[btn.Floor][btn.Button] = request
+				// Fully reset hall request
+				hallRequests[btn.Floor][btn.Button] = datatypes.RequestType{}
 			}
+			elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
+				
 
 		// --- Periodic Broadcast --- //
 		case <-broadcastTicker.C:
@@ -182,7 +172,11 @@ func RequestControlLoop(
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
-
+			
+					if req.State == datatypes.Completed {
+						continue
+					}
+			
 					// Remove unavailable elevators from AwareList
 					filtered := []string{}
 					for _, id := range req.AwareList {
@@ -191,16 +185,17 @@ func RequestControlLoop(
 						}
 					}
 					req.AwareList = filtered
-
+			
 					// Demote if assigned but not solely to this elevator
 					if req.State == datatypes.Assigned && !IsSoleAssignee(req, localID, peerList) {
 						fmt.Printf("DEMOTED: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
 						req.State = datatypes.Unassigned
 					}
-
+			
 					hallRequests[f][b] = req
 				}
 			}
+			
 
 			// 2) Call request assigner
 			allAssignedOrders := request_handler.RequestAssigner(
