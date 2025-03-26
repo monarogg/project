@@ -38,7 +38,7 @@ func RequestAssigner(
 	hraPath := "./hall_request_assigner"
 
 	hallRequestsBool := [config.N_FLOORS][config.N_HALL_BUTTONS]bool{}
-	
+
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
@@ -47,7 +47,6 @@ func RequestAssigner(
 			}
 		}
 	}
-	
 
 	// Prepare elevator state input
 	inputStates := map[string]HRAElevState{}
@@ -95,8 +94,6 @@ func RequestAssigner(
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
 
-
-	
 	if err = json.Unmarshal(out, &output); err != nil {
 		fmt.Println("json.Unmarshal error:", err)
 		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}

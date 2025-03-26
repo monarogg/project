@@ -47,12 +47,12 @@ func RequestControlLoop(
 	peerList := []string{}
 	isNetworkConnected := false
 
-	hallRequests := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType{}
-	allCabRequests := make(map[string][datatypes.N_FLOORS]datatypes.RequestType)
+	hallRequests := [config.N_FLOORS][config.N_HALL_BUTTONS]datatypes.RequestType{}
+	allCabRequests := make(map[string][config.N_FLOORS]datatypes.RequestType)
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
 
 	// Local elevator info
-	allCabRequests[localID] = [datatypes.N_FLOORS]datatypes.RequestType{}
+	allCabRequests[localID] = [config.N_FLOORS]datatypes.RequestType{}
 	updatedInfoElevs[localID] = elevator_control.GetInfoElev()
 
 	for {
@@ -115,7 +115,7 @@ func RequestControlLoop(
 			}
 
 			if datatypes.ButtonType(btn.Button) == datatypes.BT_CAB {
-				if btn.Floor >= 0 && btn.Floor < datatypes.N_FLOORS {
+				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS {
 					// Update cab request
 					localCabReqs := allCabRequests[localID]
 					localCabReqs[btn.Floor] = request
@@ -124,7 +124,7 @@ func RequestControlLoop(
 					fmt.Printf("ERROR: Invalid CAB button event: Floor=%d\n", btn.Floor)
 				}
 			} else {
-				if btn.Floor >= 0 && btn.Floor < datatypes.N_FLOORS && btn.Button >= 0 && btn.Button < datatypes.N_HALL_BUTTONS {
+				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS && btn.Button >= 0 && btn.Button < config.N_HALL_BUTTONS {
 					hallRequests[btn.Floor][btn.Button] = request
 				} else {
 					fmt.Printf("ERROR: Invalid HALL button event: Floor=%d, Button=%d\n", btn.Floor, btn.Button)
@@ -179,8 +179,8 @@ func RequestControlLoop(
 			}
 		case <-assignRequestTicker.C:
 			// 1) Demote requests with multiple awareList entries
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
 					if req.State == datatypes.Assigned && !IsSoleAssignee(req, localID, peerList) {
 						fmt.Printf("DEMOTED: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
@@ -195,11 +195,11 @@ func RequestControlLoop(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 			assignedHallOrders := allAssignedOrders[localID]
 
-			var unifiedOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool
+			var unifiedOrders [config.N_FLOORS][config.N_BUTTONS]bool
 
 			// 3) Apply only orders that this elevator is allowed to take
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					if assignedHallOrders[f][b] {
 						// Only set if NOT already assigned to another elevator
 						if len(hallRequests[f][b].AwareList) <= 1 || hallRequests[f][b].AwareList[0] == localID {
@@ -214,13 +214,13 @@ func RequestControlLoop(
 							}
 						}
 					}
-					
+
 				}
 			}
 
 			// 4) Merge local cab calls
 			localCabReqs := allCabRequests[localID]
-			for f := 0; f < datatypes.N_FLOORS; f++ {
+			for f := 0; f < config.N_FLOORS; f++ {
 				if localCabReqs[f].State == datatypes.Assigned {
 					unifiedOrders[f][datatypes.BT_CAB] = true
 					elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
@@ -265,8 +265,8 @@ func RequestControlLoop(
 			}
 
 			// Merge Hall Requests
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					if !canAcceptRequest(hallRequests[f][b], msg.SenderHallRequests[f][b]) {
 						continue
 					}
