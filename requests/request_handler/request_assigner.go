@@ -42,7 +42,14 @@ func RequestAssigner(
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
-
+	
+			// 🛠️ Skip completed requests and clean AwareList
+			if req.State == datatypes.Completed {
+				req.AwareList = []string{}
+				hallRequests[f][b] = req
+				continue
+			}
+	
 			// Filter AwareList to remove unavailable elevators
 			filteredAware := []string{}
 			for _, id := range req.AwareList {
@@ -51,24 +58,25 @@ func RequestAssigner(
 				}
 			}
 			req.AwareList = filteredAware
-
+	
 			if req.State == datatypes.Assigned && !contains(req.AwareList, localID) {
 				if len(req.AwareList) == 0 || !contains(peerList, req.AwareList[0]) {
 					fmt.Printf("[DEMOTE] Lost assigned elevator for Floor %d Button %d. Resetting to Unassigned.\n", f, b)
 					req.State = datatypes.Unassigned
 				}
 			}
-
+	
 			hallRequests[f][b] = req
-
+	
 			if req.State == datatypes.Unassigned && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
 			}
+	
 			fmt.Printf("[ASSIGNER] Ready for assignment: Floor %d Button %d | State=%v | AwareList=%v\n",
 				f, b, req.State, req.AwareList)
-
 		}
 	}
+	
 
 	// Prepare elevator state input
 	inputStates := map[string]HRAElevState{}

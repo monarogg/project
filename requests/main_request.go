@@ -153,7 +153,7 @@ func RequestControlLoop(
 
 			if request.State == datatypes.Assigned {
 				request.State = datatypes.Completed
-				request.AwareList = []string{localID}
+				request.AwareList = []string{}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
@@ -164,6 +164,14 @@ func RequestControlLoop(
 				allCabRequests[localID] = localCabReqs
 			} else {
 				hallRequests[btn.Floor][btn.Button] = request
+			}
+
+			if btn.Button != datatypes.BT_CAB {
+				sendMessageChan <- datatypes.NetworkMsg{
+					SenderID:           localID,
+					SenderHallRequests: hallRequests,
+					DebugLog:           fmt.Sprintf("[COMPLETED] Floor %d Button %d", btn.Floor, btn.Button),
+				}
 			}
 
 		// --- Periodic Broadcast --- //
