@@ -57,7 +57,7 @@ func RequestControlLoop(
 			var request datatypes.RequestType
 
 			// Distinguish between cab vs hall calls
-			if btn.Button == elevio.ButtonType(config.BT_CAB) {
+			if btn.Button == elevio.BT_Cab {
 				request = allCabRequests[localID][btn.Floor]
 
 				switch request.State {
@@ -107,7 +107,7 @@ func RequestControlLoop(
 				}
 			}
 
-			if config.ButtonType(btn.Button) == config.BT_CAB {
+			if elevio.ButtonType(btn.Button) == elevio.BT_Cab {
 				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS {
 					// Update cab request
 					localCabReqs := allCabRequests[localID]
@@ -127,7 +127,7 @@ func RequestControlLoop(
 			// --- Calls Completed --- //
 		case btn := <-completedReqChan:
 			var request datatypes.RequestType
-			if btn.Button == config.BT_CAB {
+			if btn.Button == elevio.BT_Cab {
 				request = allCabRequests[localID][btn.Floor]
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
@@ -139,7 +139,7 @@ func RequestControlLoop(
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
 			// Store updated request back:
-			if btn.Button == config.BT_CAB {
+			if btn.Button == elevio.BT_Cab {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
@@ -215,8 +215,8 @@ func RequestControlLoop(
 			localCabReqs := allCabRequests[localID]
 			for f := 0; f < config.N_FLOORS; f++ {
 				if localCabReqs[f].State == config.Assigned {
-					unifiedOrders[f][config.BT_CAB] = true
-					elevio.SetButtonLamp(elevio.ButtonType(config.BT_CAB), f, true)
+					unifiedOrders[f][elevio.BT_Cab] = true
+					elevio.SetButtonLamp(elevio.ButtonType(elevio.BT_Cab), f, true)
 				}
 			}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"project/config"
 	"project/datatypes"
+	"project/elevio"
 )
 
 func RequestsAbove(elevator datatypes.Elevator) bool {
@@ -38,14 +39,14 @@ func RequestsHere(elevator datatypes.Elevator) bool {
 	return false
 }
 
-func getReqTypeHere(elevator datatypes.Elevator) config.ButtonType {
+func getReqTypeHere(elevator datatypes.Elevator) elevio.ButtonType {
 	for b := 0; b < config.N_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
-			return config.ButtonType(b)
+			return elevio.ButtonType(b)
 		}
 	}
 	print("buttontype not found")
-	return config.BT_CAB
+	return elevio.BT_Cab
 }
 
 func ChooseNewDirAndBeh(elevator datatypes.Elevator) (config.Direction, config.ElevBehaviour) {
@@ -78,11 +79,11 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (config.Direction, config.E
 	case config.DIR_STOP:
 		if RequestsHere(elevator) {
 			switch getReqTypeHere(elevator) {
-			case config.BT_HallUP:
+			case elevio.BT_HallUp:
 				return config.DIR_UP, config.DoorOpen
-			case config.BT_HallDOWN:
+			case elevio.BT_HallDown:
 				return config.DIR_DOWN, config.DoorOpen
-			case config.BT_CAB:
+			case elevio.BT_Cab:
 				return config.DIR_STOP, config.DoorOpen
 			}
 		} else if RequestsAbove(elevator) {
@@ -103,52 +104,52 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 
 	switch elevator.Direction {
 	case config.DIR_UP:
-		return elevator.Orders[floor][config.BT_HallUP] ||
-			elevator.Orders[floor][config.BT_CAB] ||
+		return elevator.Orders[floor][elevio.BT_HallUp] ||
+			elevator.Orders[floor][elevio.BT_Cab] ||
 			!RequestsAbove(elevator)
 
 	case config.DIR_DOWN:
-		return elevator.Orders[floor][config.BT_HallDOWN] ||
-			elevator.Orders[floor][config.BT_CAB] ||
+		return elevator.Orders[floor][elevio.BT_HallDown] ||
+			elevator.Orders[floor][elevio.BT_Cab] ||
 			!RequestsBelow(elevator)
 
 	case config.DIR_STOP:
-		return elevator.Orders[floor][config.BT_HallUP] ||
-			elevator.Orders[floor][config.BT_HallDOWN] ||
-			elevator.Orders[floor][config.BT_CAB]
+		return elevator.Orders[floor][elevio.BT_HallUp] ||
+			elevator.Orders[floor][elevio.BT_HallDown] ||
+			elevator.Orders[floor][elevio.BT_Cab]
 	}
 
 	return false
 }
 
 func CanClearCab(elevator datatypes.Elevator) bool {
-	return elevator.Orders[elevator.CurrentFloor][config.BT_CAB]
+	return elevator.Orders[elevator.CurrentFloor][elevio.BT_Cab]
 }
 
 func CanClearHallUp(elevator datatypes.Elevator) bool {
 	currentFloor := elevator.CurrentFloor
-	if !elevator.Orders[currentFloor][config.BT_HallUP] {
+	if !elevator.Orders[currentFloor][elevio.BT_HallUp] {
 		return false
 	}
 	switch elevator.Direction {
 	case config.DIR_UP, config.DIR_STOP:
 		return true
 	case config.DIR_DOWN:
-		return !RequestsBelow(elevator) && !elevator.Orders[currentFloor][config.BT_HallDOWN]
+		return !RequestsBelow(elevator) && !elevator.Orders[currentFloor][elevio.BT_HallDown]
 	}
 	return false
 }
 
 func CanClearHallDown(elevator datatypes.Elevator) bool {
 	currentFloor := elevator.CurrentFloor
-	if !elevator.Orders[currentFloor][config.BT_HallDOWN] {
+	if !elevator.Orders[currentFloor][elevio.BT_HallDown] {
 		return false
 	}
 	switch elevator.Direction {
 	case config.DIR_DOWN, config.DIR_STOP:
 		return true
 	case config.DIR_UP:
-		return !RequestsAbove(elevator) && !elevator.Orders[currentFloor][config.BT_HallUP]
+		return !RequestsAbove(elevator) && !elevator.Orders[currentFloor][elevio.BT_HallUp]
 	}
 	return false
 }

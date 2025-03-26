@@ -41,3 +41,19 @@ const (
 	Assigned   RequestState = 1
 	Completed  RequestState = 2
 )
+
+type MotorDirection int
+
+const (
+	MD_UP   MotorDirection = 1
+	MD_DOWN MotorDirection = -1
+	MD_STOP MotorDirection = 0
+)
+
+// type ButtonType int
+
+// const (
+// 	BT_HallUP   ButtonType = 0
+// 	BT_HallDOWN ButtonType = 1
+// 	BT_CAB      ButtonType = 2
+// )

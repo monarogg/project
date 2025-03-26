@@ -5,16 +5,8 @@ import (
 	"project/elevio"
 )
 
-type RequestState int
-
-const (
-	Unassigned RequestState = 0
-	Assigned   RequestState = 1
-	Completed  RequestState = 2
-)
-
 type RequestType struct {
-	State     RequestState
+	State     config.RequestState
 	Count     int
 	AwareList []string
 }

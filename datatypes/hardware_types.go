@@ -1,22 +1,26 @@
 package datatypes
 
-type MotorDirection int
-
-const (
-	MD_UP   MotorDirection = 1
-	MD_DOWN MotorDirection = -1
-	MD_STOP MotorDirection = 0
+import (
+	"project/elevio"
 )
 
-type ButtonType int
+// type MotorDirection int
 
-const (
-	BT_HallUP   ButtonType = 0
-	BT_HallDOWN ButtonType = 1
-	BT_CAB      ButtonType = 2
-)
+// const (
+// 	MD_UP   MotorDirection = 1
+// 	MD_DOWN MotorDirection = -1
+// 	MD_STOP MotorDirection = 0
+// )
+
+// type ButtonType int
+
+// const (
+// 	BT_HallUP   ButtonType = 0
+// 	BT_HallDOWN ButtonType = 1
+// 	BT_CAB      ButtonType = 2
+// )
 
 type ButtonEvent struct {
 	Floor  int
-	Button ButtonType
+	Button elevio.ButtonType
 }
