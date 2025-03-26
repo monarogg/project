@@ -1,6 +1,7 @@
 package datatypes
 
 import (
+	"project/config"
 	"project/elevio"
 )
 
@@ -20,18 +21,18 @@ type RequestType struct {
 
 type ElevatorInfo struct {
 	Available    bool
-	Behaviour    ElevBehaviour
-	Direction    Direction
+	Behaviour    config.ElevBehaviour
+	Direction    config.Direction
 	CurrentFloor int
 }
 
 type NetworkMsg struct {
 	SenderID           string
 	Available          bool
-	Behavior           ElevBehaviour
+	Behavior           config.ElevBehaviour
 	Direction          elevio.MotorDirection
 	Floor              int
-	SenderHallRequests [N_FLOORS][N_HALL_BUTTONS]RequestType
-	AllCabRequests     map[string][N_FLOORS]RequestType
-	DebugLog		   string
+	SenderHallRequests [config.N_FLOORS][config.N_HALL_BUTTONS]RequestType
+	AllCabRequests     map[string][config.N_FLOORS]RequestType
+	DebugLog           string
 }

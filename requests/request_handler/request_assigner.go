@@ -42,7 +42,7 @@ func RequestAssigner(
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
-			if req.State == datatypes.Unassigned && isActiveRequest(req) {
+			if req.State == config.Unassigned && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
 			}
 		}
@@ -57,7 +57,7 @@ func RequestAssigner(
 		}
 		cabs := [config.N_FLOORS]bool{}
 		for f := 0; f < config.N_FLOORS; f++ {
-			if cabReqs[f].State == datatypes.Assigned {
+			if cabReqs[f].State == config.Assigned {
 				cabs[f] = true
 			}
 		}
@@ -92,7 +92,7 @@ func RequestAssigner(
 		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
 	}
 
-	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
+	output := new(map[string][config.N_FLOORS][config.N_BUTTONS]bool)
 
 	if err = json.Unmarshal(out, &output); err != nil {
 		fmt.Println("json.Unmarshal error:", err)
@@ -105,25 +105,25 @@ func RequestAssigner(
 	return *output
 }
 
-func dirToS(dir datatypes.Direction) string {
+func dirToS(dir config.Direction) string {
 	switch dir {
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		return "down"
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		return "stop"
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		return "up"
 	}
 	return "stop"
 }
 
-func behToS(beh datatypes.ElevBehaviour) string {
+func behToS(beh config.ElevBehaviour) string {
 	switch beh {
-	case datatypes.Idle:
+	case config.Idle:
 		return "idle"
-	case datatypes.DoorOpen:
+	case config.DoorOpen:
 		return "doorOpen"
-	case datatypes.Moving:
+	case config.Moving:
 		return "moving"
 	}
 	return "idle"

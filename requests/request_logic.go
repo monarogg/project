@@ -6,11 +6,6 @@ import (
 	"project/datatypes"
 )
 
-const (
-	N_FLOORS  = config.N_FLOORS
-	N_BUTTONS = config.N_BUTTONS
-)
-
 func RequestsAbove(elevator datatypes.Elevator) bool {
 	for f := elevator.CurrentFloor + 1; f < config.N_FLOORS; f++ {
 		for _, order := range elevator.Orders[f] {
@@ -53,71 +48,71 @@ func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
 	return datatypes.BT_CAB
 }
 
-func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datatypes.ElevBehaviour) {
+func ChooseNewDirAndBeh(elevator datatypes.Elevator) (config.Direction, config.ElevBehaviour) {
 	if !RequestsAbove(elevator) && !RequestsBelow(elevator) && !RequestsHere(elevator) {
-		return datatypes.DIR_STOP, datatypes.Idle
+		return config.DIR_STOP, config.Idle
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_DOWN, datatypes.DoorOpen
+			return config.DIR_DOWN, config.DoorOpen
 		} else if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_UP, datatypes.DoorOpen
+			return config.DIR_UP, config.DoorOpen
 		} else if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		if RequestsHere(elevator) {
 			switch getReqTypeHere(elevator) {
 			case datatypes.BT_HallUP:
-				return datatypes.DIR_UP, datatypes.DoorOpen
+				return config.DIR_UP, config.DoorOpen
 			case datatypes.BT_HallDOWN:
-				return datatypes.DIR_DOWN, datatypes.DoorOpen
+				return config.DIR_DOWN, config.DoorOpen
 			case datatypes.BT_CAB:
-				return datatypes.DIR_STOP, datatypes.DoorOpen
+				return config.DIR_STOP, config.DoorOpen
 			}
 		} else if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 	}
 
 	fmt.Println("Debug: Choosing Direction. Orders:", elevator.Orders, "Current Floor:", elevator.CurrentFloor)
-	return datatypes.DIR_STOP, datatypes.Idle
+	return config.DIR_STOP, config.Idle
 }
 
 func ShouldStop(elevator datatypes.Elevator) bool {
 	floor := elevator.CurrentFloor
 
 	switch elevator.Direction {
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		return elevator.Orders[floor][datatypes.BT_HallUP] ||
 			elevator.Orders[floor][datatypes.BT_CAB] ||
 			!RequestsAbove(elevator)
 
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		return elevator.Orders[floor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[floor][datatypes.BT_CAB] ||
 			!RequestsBelow(elevator)
 
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		return elevator.Orders[floor][datatypes.BT_HallUP] ||
 			elevator.Orders[floor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[floor][datatypes.BT_CAB]
@@ -136,9 +131,9 @@ func CanClearHallUp(elevator datatypes.Elevator) bool {
 		return false
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_UP, datatypes.DIR_STOP:
+	case config.DIR_UP, config.DIR_STOP:
 		return true
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		return !RequestsBelow(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallDOWN]
 	}
 	return false
@@ -150,9 +145,9 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 		return false
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_DOWN, datatypes.DIR_STOP:
+	case config.DIR_DOWN, config.DIR_STOP:
 		return true
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		return !RequestsAbove(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallUP]
 	}
 	return false

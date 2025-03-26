@@ -1,10 +1,10 @@
 package elevator_control
 
 import (
+	"project/config"
 	"project/datatypes"
 	"project/elevio"
 	"time"
-	"project/config"
 )
 
 var sharedInfoElevs datatypes.ElevSharedInfo
@@ -24,11 +24,11 @@ func GetInfoElev() datatypes.ElevatorInfo {
 
 // oppdaterer info om heis
 func UpdateInfoElev(elevator datatypes.Elevator) {
-	if (elevator.CurrentFloor == 0 && elevator.Direction == datatypes.DIR_DOWN) ||
-	   (elevator.CurrentFloor == config.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP) {
-		elevator.Direction = datatypes.DIR_STOP
-		if elevator.State == datatypes.Moving {
-			elevator.State = datatypes.Idle
+	if (elevator.CurrentFloor == 0 && elevator.Direction == config.DIR_DOWN) ||
+		(elevator.CurrentFloor == config.N_FLOORS-1 && elevator.Direction == config.DIR_UP) {
+		elevator.Direction = config.DIR_STOP
+		if elevator.State == config.Moving {
+			elevator.State = config.Idle
 		}
 	}
 
@@ -39,8 +39,6 @@ func UpdateInfoElev(elevator datatypes.Elevator) {
 	sharedInfoElevs.Direction = elevator.Direction
 	sharedInfoElevs.CurrentFloor = elevator.CurrentFloor
 }
-
-
 
 // endrer tilgjengelighet til heisen basert på val
 func SetElevAvailability(val bool) {
@@ -71,8 +69,8 @@ func InitElevator() datatypes.Elevator {
 
 	return datatypes.Elevator{
 		CurrentFloor: currentFloor,
-		Direction:    datatypes.DIR_STOP,
-		State:        datatypes.Idle,
+		Direction:    config.DIR_STOP,
+		State:        config.Idle,
 		Orders:       [config.N_FLOORS][config.N_BUTTONS]bool{},
 	}
 }
@@ -90,13 +88,13 @@ func KillTimer(timer *time.Timer) {
 }
 
 // oversetter en Direction (int) til en motorretning (MotorDirection)
-func DirConv(dir datatypes.Direction) elevio.MotorDirection {
+func DirConv(dir config.Direction) elevio.MotorDirection {
 	switch dir {
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		return elevio.MotorDirection(datatypes.MD_DOWN)
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		return elevio.MotorDirection(datatypes.MD_STOP)
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		return elevio.MotorDirection(datatypes.MD_UP)
 	}
 	return elevio.MotorDirection(datatypes.MD_STOP)

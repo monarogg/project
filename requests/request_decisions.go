@@ -3,6 +3,7 @@ package requests
 // Helper functions for main_request
 
 import (
+	"project/config"
 	"project/datatypes"
 )
 
@@ -25,30 +26,30 @@ func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 
 	// Compare states:
 	switch localReq.State {
-	case datatypes.Unassigned:
+	case config.Unassigned:
 		// If local is Unassigned, do not accept Completed from incoming
 		switch incomingReq.State {
-		case datatypes.Unassigned, datatypes.Assigned:
+		case config.Unassigned, config.Assigned:
 			return true
-		case datatypes.Completed:
+		case config.Completed:
 			return false
 		}
 
-	case datatypes.Assigned:
+	case config.Assigned:
 		// If local is Assigned, accept only if incoming is also Assigned
 		switch incomingReq.State {
-		case datatypes.Unassigned:
+		case config.Unassigned:
 			return false
-		case datatypes.Assigned:
+		case config.Assigned:
 			return true
-		case datatypes.Completed:
+		case config.Completed:
 			return false
 		}
 
-	case datatypes.Completed:
+	case config.Completed:
 		// If local is Completed, always accept incoming (to stay in sync)
 		switch incomingReq.State {
-		case datatypes.Unassigned, datatypes.Assigned, datatypes.Completed:
+		case config.Unassigned, config.Assigned, config.Completed:
 			return true
 		}
 	}
@@ -57,31 +58,29 @@ func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 
 // addIfMissing returns a new awareList that includes ID (if not already present).
 func AddIfMissing(awareList []string, ID string) []string {
-    for _, val := range awareList {
-        if val == ID {
-            return awareList
-        }
-    }
-    return append(awareList, ID)
+	for _, val := range awareList {
+		if val == ID {
+			return awareList
+		}
+	}
+	return append(awareList, ID)
 }
 
 func IsContainedIn(requiredSet, referenceSet []string) bool {
-    refMap := make(map[string]struct{}, len(referenceSet))
-    for _, elem := range referenceSet {
-        refMap[elem] = struct{}{}
-    }
-    for _, elem := range requiredSet {
-        if _, ok := refMap[elem]; !ok {
-            return false
-        }
-    }
-    return true
+	refMap := make(map[string]struct{}, len(referenceSet))
+	for _, elem := range referenceSet {
+		refMap[elem] = struct{}{}
+	}
+	for _, elem := range requiredSet {
+		if _, ok := refMap[elem]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func IsSoleAssignee(req datatypes.RequestType, localID string, peerList []string) bool {
-	return req.State == datatypes.Assigned &&
+	return req.State == config.Assigned &&
 		len(req.AwareList) == 1 &&
 		req.AwareList[0] == localID
 }
-
-

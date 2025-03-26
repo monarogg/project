@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-const (
-	PEER_PORT                      = 30060
-	MSG_PORT                       = 30061
-	STATUS_UPDATE_INTERVAL_MS      = 200
-	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
-)
+// const (
+// 	PEER_PORT                      = 30060
+// 	MSG_PORT                       = 30061
+// 	STATUS_UPDATE_INTERVAL_MS      = 200
+// 	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
+// )
 
 func RequestControlLoop(
 	localID string,
@@ -35,14 +35,14 @@ func RequestControlLoop(
 	receiveMessageChan := make(chan datatypes.NetworkMsg)
 	peerUpdateChan := make(chan peers.PeerUpdate)
 
-	go peers.Receiver(PEER_PORT, peerUpdateChan)
-	go peers.Transmitter(PEER_PORT, localID, nil)
-	go bcast.Receiver(MSG_PORT, receiveMessageChan)
-	go bcast.Transmitter(MSG_PORT, sendMessageChan)
+	go peers.Receiver(config.PEER_PORT, peerUpdateChan)
+	go peers.Transmitter(config.PEER_PORT, localID, nil)
+	go bcast.Receiver(config.MSG_PORT, receiveMessageChan)
+	go bcast.Transmitter(config.MSG_PORT, sendMessageChan)
 
 	// Timers
-	broadcastTicker := time.NewTicker(STATUS_UPDATE_INTERVAL_MS * time.Millisecond)
-	assignRequestTicker := time.NewTicker(REQUEST_ASSIGNMENT_INTERVAL_MS * time.Millisecond)
+	broadcastTicker := time.NewTicker(config.STATUS_UPDATE_INTERVAL_MS * time.Millisecond)
+	assignRequestTicker := time.NewTicker(config.REQUEST_ASSIGNMENT_INTERVAL_MS * time.Millisecond)
 
 	peerList := []string{}
 	isNetworkConnected := false
@@ -259,7 +259,7 @@ func RequestControlLoop(
 
 			updatedInfoElevs[msg.SenderID] = datatypes.ElevatorInfo{
 				Behaviour:    msg.Behavior,
-				Direction:    datatypes.Direction(msg.Direction),
+				Direction:    config.Direction(msg.Direction),
 				Available:    msg.Available,
 				CurrentFloor: msg.Floor,
 			}
