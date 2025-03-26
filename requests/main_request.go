@@ -166,14 +166,6 @@ func RequestControlLoop(
 				hallRequests[btn.Floor][btn.Button] = request
 			}
 
-			if btn.Button != datatypes.BT_CAB {
-				sendMessageChan <- datatypes.NetworkMsg{
-					SenderID:           localID,
-					SenderHallRequests: hallRequests,
-					DebugLog:           fmt.Sprintf("[COMPLETED] Floor %d Button %d", btn.Floor, btn.Button),
-				}
-			}
-
 		// --- Periodic Broadcast --- //
 		case <-broadcastTicker.C:
 			info := elevator_control.GetInfoElev()
@@ -202,7 +194,7 @@ func RequestControlLoop(
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
-
+		
 					// Remove unavailable elevators from AwareList
 					filtered := []string{}
 					for _, id := range req.AwareList {
@@ -211,14 +203,55 @@ func RequestControlLoop(
 						}
 					}
 					req.AwareList = filtered
-
+		
 					// Demote if assigned but not solely to this elevator
-					if req.State == datatypes.Assigned && !IsSoleAssignee(req, localID, peerList) {
-						fmt.Printf("DEMOTED: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
-						req.State = datatypes.Unassigned
+					if req.State == datatypes.Assigned {
+						active := 0
+						for _, id := range req.AwareList {
+							if contains(peerList, id) {
+								active++
+							}
+						}
+						if active > 1 {
+							fmt.Printf("[DEMOTED] Too many active assignees: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
+							req.State = datatypes.Unassigned
+						}
 					}
-
+		
 					hallRequests[f][b] = req
+				}
+			}
+		
+			if isNetworkConnected {
+				sendMessageChan <- datatypes.NetworkMsg{
+					SenderID:           localID,
+					SenderHallRequests: hallRequests,
+				}
+			}
+		
+			// Build jsonStates for the HRA
+			type HRAElevState struct {
+				Floor       int                   `json:"floor"`
+				Direction   int                   `json:"direction"`
+				Behaviour   string                `json:"behaviour"`
+				CabRequests [config.N_FLOORS]bool `json:"cabRequests"`
+			}
+
+			jsonStates := make(map[string]HRAElevState)
+
+			for id, info := range updatedInfoElevs {
+				var cabReqs [config.N_FLOORS]bool
+				for f := 0; f < config.N_FLOORS; f++ {
+					if allCabRequests[id][f].State == datatypes.Assigned {
+						cabReqs[f] = true
+					}
+				}
+
+				jsonStates[id] = HRAElevState{
+					Floor:       info.CurrentFloor,
+					Direction:   int(info.Direction),
+					Behaviour:   fmt.Sprint(info.Behaviour),
+					CabRequests: cabReqs,
 				}
 			}
 
@@ -324,12 +357,6 @@ func RequestControlLoop(
 					accepted := msg.SenderHallRequests[f][b]
 					accepted.AwareList = AddIfMissing(accepted.AwareList, localID)
 
-					if accepted.State == datatypes.Unassigned && IsContainedIn(accepted.AwareList, peerList) {
-						accepted.State = datatypes.Assigned
-						accepted.AwareList = []string{localID}
-						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
-					}
-
 					switch accepted.State {
 					case datatypes.Assigned:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
@@ -343,10 +370,6 @@ func RequestControlLoop(
 			}
 		}
 	}
-}
-
-func isAssignedToLocal(req datatypes.RequestType, localID string) bool {
-	return req.State != datatypes.Assigned || contains(req.AwareList, localID)
 }
 
 func contains(list []string, item string) bool {
