@@ -12,13 +12,6 @@ import (
 	"time"
 )
 
-// const (
-// 	PEER_PORT                      = 30060
-// 	MSG_PORT                       = 30061
-// 	STATUS_UPDATE_INTERVAL_MS      = 200
-// 	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
-// )
-
 func RequestControlLoop(
 	localID string,
 	reqChan chan<- [config.N_FLOORS][config.N_BUTTONS]bool,
@@ -64,23 +57,23 @@ func RequestControlLoop(
 			var request datatypes.RequestType
 
 			// Distinguish between cab vs hall calls
-			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
+			if btn.Button == elevio.ButtonType(config.BT_CAB) {
 				request = allCabRequests[localID][btn.Floor]
 
 				switch request.State {
-				case datatypes.Completed:
+				case config.Completed:
 					// Pressed again after completed => new request
-					request.State = datatypes.Assigned
+					request.State = config.Assigned
 					request.AwareList = AddIfMissing(request.AwareList, localID)
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
-				case datatypes.Unassigned:
+				case config.Unassigned:
 					// Normal new cab call
-					request.State = datatypes.Assigned
+					request.State = config.Assigned
 					request.AwareList = []string{localID}
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
-				case datatypes.Assigned:
+				case config.Assigned:
 					// Already assigned => do nothing or custom logic
 				}
 
@@ -100,12 +93,12 @@ func RequestControlLoop(
 				btn.Floor, btn.Button, request.State)
 
 			switch request.State {
-			case datatypes.Completed:
+			case config.Completed:
 				// Pressing again after completed => new request
-				request.State = datatypes.Unassigned
+				request.State = config.Unassigned
 				request.AwareList = []string{localID}
 
-			case datatypes.Unassigned:
+			case config.Unassigned:
 				// ← This is where the fix goes
 				if len(request.AwareList) == 0 {
 					request.AwareList = []string{localID}
@@ -114,7 +107,7 @@ func RequestControlLoop(
 				}
 			}
 
-			if datatypes.ButtonType(btn.Button) == datatypes.BT_CAB {
+			if config.ButtonType(btn.Button) == config.BT_CAB {
 				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS {
 					// Update cab request
 					localCabReqs := allCabRequests[localID]
@@ -134,19 +127,19 @@ func RequestControlLoop(
 			// --- Calls Completed --- //
 		case btn := <-completedReqChan:
 			var request datatypes.RequestType
-			if btn.Button == datatypes.BT_CAB {
+			if btn.Button == config.BT_CAB {
 				request = allCabRequests[localID][btn.Floor]
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
 			}
-			if request.State == datatypes.Assigned {
-				request.State = datatypes.Completed
+			if request.State == config.Assigned {
+				request.State = config.Completed
 				request.AwareList = []string{localID}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
 			// Store updated request back:
-			if btn.Button == datatypes.BT_CAB {
+			if btn.Button == config.BT_CAB {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
@@ -182,9 +175,9 @@ func RequestControlLoop(
 			for f := 0; f < config.N_FLOORS; f++ {
 				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
-					if req.State == datatypes.Assigned && !IsSoleAssignee(req, localID, peerList) {
+					if req.State == config.Assigned && !IsSoleAssignee(req, localID, peerList) {
 						fmt.Printf("DEMOTED: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
-						req.State = datatypes.Unassigned
+						req.State = config.Unassigned
 						hallRequests[f][b] = req
 					}
 				}
@@ -203,7 +196,7 @@ func RequestControlLoop(
 					if assignedHallOrders[f][b] {
 						// Only set if NOT already assigned to another elevator
 						if len(hallRequests[f][b].AwareList) <= 1 || hallRequests[f][b].AwareList[0] == localID {
-							hallRequests[f][b].State = datatypes.Assigned
+							hallRequests[f][b].State = config.Assigned
 							hallRequests[f][b].AwareList = []string{localID}
 							unifiedOrders[f][b] = true
 							elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
@@ -221,9 +214,9 @@ func RequestControlLoop(
 			// 4) Merge local cab calls
 			localCabReqs := allCabRequests[localID]
 			for f := 0; f < config.N_FLOORS; f++ {
-				if localCabReqs[f].State == datatypes.Assigned {
-					unifiedOrders[f][datatypes.BT_CAB] = true
-					elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
+				if localCabReqs[f].State == config.Assigned {
+					unifiedOrders[f][config.BT_CAB] = true
+					elevio.SetButtonLamp(elevio.ButtonType(config.BT_CAB), f, true)
 				}
 			}
 
@@ -273,16 +266,16 @@ func RequestControlLoop(
 					accepted := msg.SenderHallRequests[f][b]
 					accepted.AwareList = AddIfMissing(accepted.AwareList, localID)
 
-					if accepted.State == datatypes.Unassigned && IsContainedIn(accepted.AwareList, peerList) {
-						accepted.State = datatypes.Assigned
+					if accepted.State == config.Unassigned && IsContainedIn(accepted.AwareList, peerList) {
+						accepted.State = config.Assigned
 						accepted.AwareList = []string{localID}
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 					}
 
 					switch accepted.State {
-					case datatypes.Assigned:
+					case config.Assigned:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
-					case datatypes.Completed:
+					case config.Completed:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 					}
 
@@ -295,7 +288,7 @@ func RequestControlLoop(
 }
 
 func isAssignedToLocal(req datatypes.RequestType, localID string) bool {
-	return req.State != datatypes.Assigned || contains(req.AwareList, localID)
+	return req.State != config.Assigned || contains(req.AwareList, localID)
 }
 
 func contains(list []string, item string) bool {

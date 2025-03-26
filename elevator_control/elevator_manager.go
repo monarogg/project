@@ -91,13 +91,13 @@ func KillTimer(timer *time.Timer) {
 func DirConv(dir config.Direction) elevio.MotorDirection {
 	switch dir {
 	case config.DIR_DOWN:
-		return elevio.MotorDirection(datatypes.MD_DOWN)
+		return elevio.MotorDirection(config.MD_DOWN)
 	case config.DIR_STOP:
-		return elevio.MotorDirection(datatypes.MD_STOP)
+		return elevio.MotorDirection(config.MD_STOP)
 	case config.DIR_UP:
-		return elevio.MotorDirection(datatypes.MD_UP)
+		return elevio.MotorDirection(config.MD_UP)
 	}
-	return elevio.MotorDirection(datatypes.MD_STOP)
+	return elevio.MotorDirection(config.MD_STOP)
 }
 func OrdersChanged(old, new [config.N_FLOORS][config.N_BUTTONS]bool) bool {
 	for i := range old {
