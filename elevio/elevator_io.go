@@ -93,6 +93,7 @@ func PollFloorSensor(receiver chan<- int) {
 		time.Sleep(_pollRate)
 		v := GetFloor()
 		if v != prev && v != -1 {
+			fmt.Println("DEBUG: Floor sensor triggered. Floor =", v)
 			receiver <- v
 		}
 		prev = v

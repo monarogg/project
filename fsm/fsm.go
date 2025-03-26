@@ -172,6 +172,9 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				break
 			}
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+			fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
+
+
 			switch elevator.State {
 			case datatypes.DoorOpen:
 				elevio.SetDoorOpenLamp(true)
@@ -260,6 +263,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 					elevator.Direction = datatypes.DIR_STOP
 				} else {
 					elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+					fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
+
 				}
 
 				switch elevator.State {
@@ -272,6 +277,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			}
 
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
+			fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
+
 			switch elevator.State {
 			case datatypes.DoorOpen:
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)

@@ -56,6 +56,9 @@ func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
 }
 
 func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datatypes.ElevBehaviour) {
+	if !RequestsAbove(elevator) && !RequestsBelow(elevator) && !RequestsHere(elevator) {
+		return datatypes.DIR_STOP, datatypes.Idle
+	}
 	switch elevator.Direction {
 	case datatypes.DIR_UP:
 		if RequestsAbove(elevator) {

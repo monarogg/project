@@ -94,6 +94,9 @@ func RequestAssigner(
 	}
 
 	output := new(map[string][datatypes.N_FLOORS][datatypes.N_BUTTONS]bool)
+
+
+	
 	if err = json.Unmarshal(out, &output); err != nil {
 		fmt.Println("json.Unmarshal error:", err)
 		return map[string][config.N_FLOORS][config.N_BUTTONS]bool{}
