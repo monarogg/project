@@ -150,15 +150,14 @@ func RequestControlLoop(
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
 			}
-		
+
 			if request.State == datatypes.Assigned {
 				request.State = datatypes.Completed
 				request.AwareList = []string{localID}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
-			
-		
+
 			if btn.Button == datatypes.BT_CAB {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
@@ -166,7 +165,6 @@ func RequestControlLoop(
 			} else {
 				hallRequests[btn.Floor][btn.Button] = request
 			}
-		
 
 		// --- Periodic Broadcast --- //
 		case <-broadcastTicker.C:
@@ -219,7 +217,26 @@ func RequestControlLoop(
 			// 2) Call request assigner
 			allAssignedOrders := request_handler.RequestAssigner(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
-			assignedHallOrders := allAssignedOrders[localID]
+			var assignedHallOrders [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool
+			if len(peerList) == 1 && peerList[0] == localID {
+				// Alone on the network – take all unassigned/assigned-to-me requests
+				for f := 0; f < datatypes.N_FLOORS; f++ {
+					for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+						req := hallRequests[f][b]
+						if req.State != datatypes.Completed && len(req.AwareList) > 0 {
+							assignedHallOrders[f][b] = true
+						}
+					}
+				}
+			} else {
+				// Normal distributed assignment
+				fullAssignment := allAssignedOrders[localID]
+				for f := 0; f < datatypes.N_FLOORS; f++ {
+					for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+						assignedHallOrders[f][b] = fullAssignment[f][b]
+					}
+				}
+			}
 
 			var unifiedOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool
 
@@ -227,7 +244,6 @@ func RequestControlLoop(
 			for f := 0; f < datatypes.N_FLOORS; f++ {
 				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
 					if assignedHallOrders[f][b] {
-						// Only set if NOT already assigned to another elevator
 						if len(hallRequests[f][b].AwareList) <= 1 || hallRequests[f][b].AwareList[0] == localID {
 							hallRequests[f][b].State = datatypes.Assigned
 							hallRequests[f][b].AwareList = []string{localID}
@@ -240,7 +256,6 @@ func RequestControlLoop(
 							}
 						}
 					}
-
 				}
 			}
 
