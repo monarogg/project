@@ -198,6 +198,7 @@ import (
 	"os/exec"
 	"project/config"
 	"project/datatypes"
+	"os"
 )
 
 type HRAElevState struct {
@@ -234,9 +235,9 @@ func RequestAssigner(
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
-			if req.State == datatypes.Unassigned && isActiveRequest(req) && isLowestIDInAwareList(localID, req.AwareList) {
+			if req.State == datatypes.Unassigned && isActiveRequest(req) {
 				hallRequestsBool[f][b] = true
-			}						
+			}
 		}
 	}
 
@@ -332,13 +333,20 @@ func contains(list []string, item string) bool {
 	}
 	return false
 }
-
-func isLowestIDInAwareList(localID string, awareList []string) bool {
-	for _, id := range awareList {
-		if id < localID {
-			return false
-		}
+func SaveCabCalls(localID string, allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType) error {
+	data, err := json.Marshal(allCabRequests[localID])
+	if err != nil {
+		return err
 	}
-	return true
+	return os.WriteFile(fmt.Sprintf("cab_calls_%s.json", localID), data, 0644)
 }
 
+func LoadCabCalls(localID string) ([datatypes.N_FLOORS]datatypes.RequestType, error) {
+	var calls [datatypes.N_FLOORS]datatypes.RequestType
+	data, err := os.ReadFile(fmt.Sprintf("cab_calls_%s.json", localID))
+	if err != nil {
+		return calls, err
+	}
+	err = json.Unmarshal(data, &calls)
+	return calls, err
+}
