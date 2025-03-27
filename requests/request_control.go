@@ -41,6 +41,12 @@ func DistributedRequestLoop(
 
 	peerList := []string{}
 	isNetworkConnected := false
+	latestPeerList := []string{}
+
+	var stablePeerCount = 0
+	var stableTicks = 0
+	var reducedTicks = 0
+	var baselineEstablished = false
 
 	hallRequests := [datatypes.NUM_FLOORS][datatypes.NUM_HALL_BUTTONS]datatypes.RequestType{}
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
@@ -81,7 +87,7 @@ func DistributedRequestLoop(
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
 				case datatypes.Assigned:
-					// Already assigned => do nothing or custom logic
+					// Already assigned
 				}
 
 				// Save back to local array
@@ -103,12 +109,11 @@ func DistributedRequestLoop(
 
 			switch request.State {
 			case datatypes.Completed:
-				// Pressing again after completed => new request
+				// Pressing again after completed
 				request.State = datatypes.Unassigned
 				request.AwareList = []string{localID}
 
 			case datatypes.Unassigned:
-				// ← This is where the fix goes
 				if len(request.AwareList) == 0 {
 					request.AwareList = []string{localID}
 				} else {
@@ -195,6 +200,7 @@ func DistributedRequestLoop(
 			}
 
 		case <-assignRequestTicker.C:
+			peerList = latestPeerList
 			for f := 0; f < datatypes.NUM_FLOORS; f++ {
 				for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
@@ -263,8 +269,31 @@ func DistributedRequestLoop(
 			allAssignedOrders := request_handler.HRAmain(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 			var assignedHallOrders [datatypes.NUM_FLOORS][datatypes.NUM_HALL_BUTTONS]bool
-			if len(peerList) == 1 && peerList[0] == localID {
-				// Alone on the network – take all unassigned/assigned-to-me requests
+			currentCount := len(peerList)
+
+			fmt.Printf("[TICK] peerCount=%d stableBaseline=%d stableTicks=%d reducedTicks=%d\n", currentCount, stablePeerCount, stableTicks, reducedTicks)
+
+			if !baselineEstablished {
+				if currentCount == stablePeerCount {
+					stableTicks++
+				} else {
+					stablePeerCount = currentCount
+					stableTicks = 1
+				}
+				if stableTicks >= 30 {
+					baselineEstablished = true
+					fmt.Printf("[BASELINE SET] Peer baseline established at %d\n", stablePeerCount)
+				}
+			} else {
+				if currentCount < stablePeerCount {
+					reducedTicks++
+				} else {
+					reducedTicks = 0
+				}
+			}
+
+			if reducedTicks >= 15 {
+				fmt.Println("Peer count dropped from baseline for 10 ticks – taking over hall orders")
 				for f := 0; f < datatypes.NUM_FLOORS; f++ {
 					for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
 						req := hallRequests[f][b]
@@ -324,7 +353,7 @@ func DistributedRequestLoop(
 
 			// --- Peer Updates --- //
 		case peer := <-peerUpdateChan:
-			peerList = peer.Peers
+			latestPeerList = peer.Peers
 
 			if peer.New == localID {
 				isNetworkConnected = true
