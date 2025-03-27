@@ -1,7 +1,9 @@
 package requests
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"project/config"
 	"project/datatypes"
 	"project/elevator_control"
@@ -10,8 +12,6 @@ import (
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
 	"time"
-	"encoding/json"
-	"os"
 )
 
 const (
@@ -49,9 +49,9 @@ func RequestControlLoop(
 	peerList := []string{}
 	isNetworkConnected := false
 
-	hallRequests := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType{}
+	hallRequests := [config.N_FLOORS][config.N_HALL_BUTTONS]datatypes.RequestType{}
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
-	allCabRequests := make(map[string][datatypes.N_FLOORS]datatypes.RequestType)
+	allCabRequests := make(map[string][config.N_FLOORS]datatypes.RequestType)
 
 	// Local elevator info
 	updatedInfoElevs[localID] = elevator_control.GetInfoElev()
@@ -59,10 +59,9 @@ func RequestControlLoop(
 		allCabRequests[localID] = loaded
 		fmt.Println("Restored cab calls for", localID)
 	} else {
-		allCabRequests[localID] = [datatypes.N_FLOORS]datatypes.RequestType{}
+		allCabRequests[localID] = [config.N_FLOORS]datatypes.RequestType{}
 	}
-	
-	
+
 	for {
 		select {
 
@@ -72,23 +71,23 @@ func RequestControlLoop(
 			var request datatypes.RequestType
 
 			// Distinguish between cab vs hall calls
-			if btn.Button == elevio.ButtonType(datatypes.BT_CAB) {
+			if btn.Button == elevio.ButtonType(elevio.BT_Cab) {
 				request = allCabRequests[localID][btn.Floor]
 
 				switch request.State {
-				case datatypes.Completed:
+				case config.Completed:
 					// Pressed again after completed => new request
-					request.State = datatypes.Assigned
+					request.State = config.Assigned
 					request.AwareList = AddIfMissing(request.AwareList, localID)
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
-				case datatypes.Unassigned:
+				case config.Unassigned:
 					// Normal new cab call
-					request.State = datatypes.Assigned
+					request.State = config.Assigned
 					request.AwareList = []string{localID}
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
-				case datatypes.Assigned:
+				case config.Assigned:
 					// Already assigned => do nothing or custom logic
 				}
 
@@ -110,12 +109,12 @@ func RequestControlLoop(
 				btn.Floor, btn.Button, request.State)
 
 			switch request.State {
-			case datatypes.Completed:
+			case config.Completed:
 				// Pressing again after completed => new request
-				request.State = datatypes.Unassigned
+				request.State = config.Unassigned
 				request.AwareList = []string{localID}
 
-			case datatypes.Unassigned:
+			case config.Unassigned:
 				// ← This is where the fix goes
 				if len(request.AwareList) == 0 {
 					request.AwareList = []string{localID}
@@ -124,26 +123,26 @@ func RequestControlLoop(
 				}
 			}
 
-			if datatypes.ButtonType(btn.Button) == datatypes.BT_CAB {
-				if btn.Floor >= 0 && btn.Floor < datatypes.N_FLOORS {
+			if elevio.ButtonType(btn.Button) == elevio.BT_Cab {
+				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS {
 					// Update cab request
 					localCabReqs := allCabRequests[localID]
 					localCabReqs[btn.Floor] = request
 					allCabRequests[localID] = localCabReqs
 					SaveCabCalls(localID, allCabRequests)
-					} else {
+				} else {
 					fmt.Printf("ERROR: Invalid CAB button event: Floor=%d\n", btn.Floor)
 				}
 			} else {
-				if btn.Floor >= 0 && btn.Floor < datatypes.N_FLOORS && btn.Button >= 0 && btn.Button < datatypes.N_HALL_BUTTONS {
+				if btn.Floor >= 0 && btn.Floor < config.N_FLOORS && btn.Button >= 0 && btn.Button < config.N_HALL_BUTTONS {
 					hallRequests[btn.Floor][btn.Button] = request
 
 					// --- IMMEDIATE SERVE IF AT FLOOR AND IDLE/DOOROPEN --- //
 					info := updatedInfoElevs[localID]
 					if btn.Floor == info.CurrentFloor &&
-						(info.Behaviour == datatypes.Idle || info.Behaviour == datatypes.DoorOpen) {
+						(info.Behaviour == config.Idle || info.Behaviour == config.DoorOpen) {
 
-						request.State = datatypes.Assigned
+						request.State = config.Assigned
 						request.AwareList = []string{localID}
 						hallRequests[btn.Floor][btn.Button] = request
 					}
@@ -156,25 +155,25 @@ func RequestControlLoop(
 			// --- Calls Completed --- //
 		case btn := <-completedReqChan:
 			var request datatypes.RequestType
-			if btn.Button == datatypes.BT_CAB {
+			if btn.Button == elevio.BT_Cab {
 				request = allCabRequests[localID][btn.Floor]
 			} else {
 				request = hallRequests[btn.Floor][btn.Button]
 			}
 
-			if request.State == datatypes.Assigned {
-				request.State = datatypes.Completed
+			if request.State == config.Assigned {
+				request.State = config.Completed
 				request.AwareList = []string{}
 				request.Count++
 				elevio.SetButtonLamp(elevio.ButtonType(btn.Button), btn.Floor, false)
 			}
 
-			if btn.Button == datatypes.BT_CAB {
+			if btn.Button == elevio.BT_Cab {
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
 				SaveCabCalls(localID, allCabRequests)
-				} else {
+			} else {
 				hallRequests[btn.Floor][btn.Button] = request
 			}
 
@@ -203,10 +202,10 @@ func RequestControlLoop(
 			}
 
 		case <-assignRequestTicker.C:
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					req := hallRequests[f][b]
-		
+
 					// Remove unavailable elevators from AwareList
 					filtered := []string{}
 					for _, id := range req.AwareList {
@@ -215,9 +214,9 @@ func RequestControlLoop(
 						}
 					}
 					req.AwareList = filtered
-		
+
 					// Demote if assigned but not solely to this elevator
-					if req.State == datatypes.Assigned {
+					if req.State == config.Assigned {
 						active := 0
 						for _, id := range req.AwareList {
 							if contains(peerList, id) {
@@ -226,21 +225,21 @@ func RequestControlLoop(
 						}
 						if active > 1 {
 							fmt.Printf("[DEMOTED] Too many active assignees: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
-							req.State = datatypes.Unassigned
+							req.State = config.Unassigned
 						}
 					}
-		
+
 					hallRequests[f][b] = req
 				}
 			}
-		
+
 			if isNetworkConnected {
 				sendMessageChan <- datatypes.NetworkMsg{
 					SenderID:           localID,
 					SenderHallRequests: hallRequests,
 				}
 			}
-		
+
 			// Build jsonStates for the HRA
 			type HRAElevState struct {
 				Floor       int                   `json:"floor"`
@@ -254,7 +253,7 @@ func RequestControlLoop(
 			for id, info := range updatedInfoElevs {
 				var cabReqs [config.N_FLOORS]bool
 				for f := 0; f < config.N_FLOORS; f++ {
-					if allCabRequests[id][f].State == datatypes.Assigned {
+					if allCabRequests[id][f].State == config.Assigned {
 						cabReqs[f] = true
 					}
 				}
@@ -270,13 +269,13 @@ func RequestControlLoop(
 			// 2) Call request assigner
 			allAssignedOrders := request_handler.RequestAssigner(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
-			var assignedHallOrders [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]bool
+			var assignedHallOrders [config.N_FLOORS][config.N_HALL_BUTTONS]bool
 			if len(peerList) == 1 && peerList[0] == localID {
 				// Alone on the network – take all unassigned/assigned-to-me requests
-				for f := 0; f < datatypes.N_FLOORS; f++ {
-					for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+				for f := 0; f < config.N_FLOORS; f++ {
+					for b := 0; b < config.N_HALL_BUTTONS; b++ {
 						req := hallRequests[f][b]
-						if req.State != datatypes.Completed && len(req.AwareList) > 0 {
+						if req.State != config.Completed && len(req.AwareList) > 0 {
 							assignedHallOrders[f][b] = true
 						}
 					}
@@ -284,21 +283,21 @@ func RequestControlLoop(
 			} else {
 				// Normal distributed assignment
 				fullAssignment := allAssignedOrders[localID]
-				for f := 0; f < datatypes.N_FLOORS; f++ {
-					for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+				for f := 0; f < config.N_FLOORS; f++ {
+					for b := 0; b < config.N_HALL_BUTTONS; b++ {
 						assignedHallOrders[f][b] = fullAssignment[f][b]
 					}
 				}
 			}
 
-			var unifiedOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool
+			var unifiedOrders [config.N_FLOORS][config.N_BUTTONS]bool
 
 			// 3) Apply only orders that this elevator is allowed to take
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					if assignedHallOrders[f][b] {
 						if len(hallRequests[f][b].AwareList) <= 1 || hallRequests[f][b].AwareList[0] == localID {
-							hallRequests[f][b].State = datatypes.Assigned
+							hallRequests[f][b].State = config.Assigned
 							hallRequests[f][b].AwareList = []string{localID}
 							unifiedOrders[f][b] = true
 							elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
@@ -314,10 +313,10 @@ func RequestControlLoop(
 
 			// 4) Merge local cab calls
 			localCabReqs := allCabRequests[localID]
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				if localCabReqs[f].State == datatypes.Assigned {
-					unifiedOrders[f][datatypes.BT_CAB] = true
-					elevio.SetButtonLamp(elevio.ButtonType(datatypes.BT_CAB), f, true)
+			for f := 0; f < config.N_FLOORS; f++ {
+				if localCabReqs[f].State == config.Assigned {
+					unifiedOrders[f][elevio.BT_Cab] = true
+					elevio.SetButtonLamp(elevio.ButtonType(elevio.BT_Cab), f, true)
 				}
 			}
 
@@ -355,14 +354,14 @@ func RequestControlLoop(
 
 			updatedInfoElevs[msg.SenderID] = datatypes.ElevatorInfo{
 				Behaviour:    msg.Behavior,
-				Direction:    datatypes.Direction(msg.Direction),
+				Direction:    config.Direction(msg.Direction),
 				Available:    msg.Available,
 				CurrentFloor: msg.Floor,
 			}
 
 			// Merge Hall Requests
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_HALL_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_HALL_BUTTONS; b++ {
 					if !canAcceptRequest(hallRequests[f][b], msg.SenderHallRequests[f][b]) {
 						continue
 					}
@@ -370,9 +369,9 @@ func RequestControlLoop(
 					accepted.AwareList = AddIfMissing(accepted.AwareList, localID)
 
 					switch accepted.State {
-					case datatypes.Assigned:
+					case config.Assigned:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
-					case datatypes.Completed:
+					case config.Completed:
 						elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 					}
 
@@ -393,7 +392,7 @@ func contains(list []string, item string) bool {
 	return false
 }
 
-func SaveCabCalls(localID string, allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType) error {
+func SaveCabCalls(localID string, allCabRequests map[string][config.N_FLOORS]datatypes.RequestType) error {
 	data, err := json.Marshal(allCabRequests[localID])
 	if err != nil {
 		return err
@@ -401,8 +400,8 @@ func SaveCabCalls(localID string, allCabRequests map[string][datatypes.N_FLOORS]
 	return os.WriteFile(fmt.Sprintf("cab_calls_%s.json", localID), data, 0644)
 }
 
-func LoadCabCalls(localID string) ([datatypes.N_FLOORS]datatypes.RequestType, error) {
-	var calls [datatypes.N_FLOORS]datatypes.RequestType
+func LoadCabCalls(localID string) ([config.N_FLOORS]datatypes.RequestType, error) {
+	var calls [config.N_FLOORS]datatypes.RequestType
 	data, err := os.ReadFile(fmt.Sprintf("cab_calls_%s.json", localID))
 	if err != nil {
 		return calls, err

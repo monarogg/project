@@ -1,8 +1,8 @@
 package fsm
 
 import (
-	//"project/config"
 	"fmt"
+	"project/config"
 	"project/datatypes"
 	"project/elevator_control"
 	"project/elevio"
@@ -15,7 +15,7 @@ const (
 	MOVEMENT_TIMEOUT   = 4
 )
 
-func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, completedReqChan chan<- datatypes.ButtonEvent) {
+func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, completedReqChan chan<- datatypes.ButtonEvent) {
 	floorSensorChan := make(chan int)
 	obstructionChan := make(chan bool)
 
@@ -35,8 +35,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 		select {
 		case newOrders := <-reqChan:
 			fmt.Println("FSM: Received new orders:")
-			for f := 0; f < datatypes.N_FLOORS; f++ {
-				for b := 0; b < datatypes.N_BUTTONS; b++ {
+			for f := 0; f < config.N_FLOORS; f++ {
+				for b := 0; b < config.N_BUTTONS; b++ {
 					if newOrders[f][b] {
 						fmt.Printf(" - Order at floor %d, button %d\n", f, b)
 					}
@@ -44,17 +44,17 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			}
 			elevator.Orders = newOrders
 
-			if elevator.State != datatypes.Idle {
+			if elevator.State != config.Idle {
 				break
 			}
 			elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
 			fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
 
 			switch elevator.State {
-			case datatypes.DoorOpen:
+			case config.DoorOpen:
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
-			case datatypes.Moving:
+			case config.Moving:
 				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
@@ -62,38 +62,38 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 
 		case newFloor := <-floorSensorChan:
 
-			if newFloor == 0 && elevator.Direction == datatypes.DIR_DOWN {
+			if newFloor == 0 && elevator.Direction == config.DIR_DOWN {
 				fmt.Println("FSM: Clamped at bottom floor")
 				elevator.CurrentFloor = newFloor
 				elevio.SetFloorIndicator(newFloor)
-				elevator.Direction = datatypes.DIR_STOP
+				elevator.Direction = config.DIR_STOP
 				elevio.SetMotorDirection(elevio.MD_Stop)
 				elevator_control.KillTimer(movementTimer)
-				elevator.State = datatypes.DoorOpen
+				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
-				elevator.Orders[newFloor][datatypes.BT_HallUP] = false
-				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
+				elevator.Orders[newFloor][elevio.BT_HallUp] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: elevio.BT_HallUp}
 
 				break
 			}
 
-			if newFloor == datatypes.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP {
+			if newFloor == config.N_FLOORS-1 && elevator.Direction == config.DIR_UP {
 				fmt.Println("FSM: Clamped at top floor")
 				elevator.CurrentFloor = newFloor
 				elevio.SetFloorIndicator(newFloor)
-				elevator.Direction = datatypes.DIR_STOP
+				elevator.Direction = config.DIR_STOP
 				elevio.SetMotorDirection(elevio.MD_Stop)
 				elevator_control.KillTimer(movementTimer)
-				elevator.State = datatypes.DoorOpen
+				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
-				elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
-				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
+				elevator.Orders[newFloor][elevio.BT_HallDown] = false
+				completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: elevio.BT_HallDown}
 
 				break
 			}
@@ -102,7 +102,7 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			elevator.CurrentFloor = newFloor
 			elevio.SetFloorIndicator(newFloor)
 
-			if elevator.State != datatypes.Moving {
+			if elevator.State != config.Moving {
 				break
 			}
 
@@ -113,22 +113,22 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 
 			if requests.ShouldStop(elevator) {
 				elevator_control.KillTimer(movementTimer)
-				elevio.SetMotorDirection(elevio.MotorDirection(datatypes.DIR_STOP))
+				elevio.SetMotorDirection(elevio.MotorDirection(config.DIR_STOP))
 
 				if requests.CanClearHallUp(elevator) {
-					elevator.Orders[newFloor][datatypes.BT_HallUP] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallUP}
+					elevator.Orders[newFloor][elevio.BT_HallUp] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: elevio.BT_HallUp}
 				}
 				if requests.CanClearHallDown(elevator) {
-					elevator.Orders[newFloor][datatypes.BT_HallDOWN] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_HallDOWN}
+					elevator.Orders[newFloor][elevio.BT_HallDown] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: elevio.BT_HallDown}
 				}
 				if requests.CanClearCab(elevator) {
-					elevator.Orders[newFloor][datatypes.BT_CAB] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: datatypes.BT_CAB}
+					elevator.Orders[newFloor][elevio.BT_Cab] = false
+					completedReqChan <- datatypes.ButtonEvent{Floor: newFloor, Button: elevio.BT_Cab}
 				}
 
-				elevator.State = datatypes.DoorOpen
+				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
 			}
@@ -145,15 +145,15 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			}
 
 		case <-doorOpenTimer.C:
-			if elevator.State != datatypes.DoorOpen {
+			if elevator.State != config.DoorOpen {
 				break
 			}
 
 			cleared := false
-			for button := 0; button < datatypes.N_BUTTONS; button++ {
+			for button := 0; button < config.N_BUTTONS; button++ {
 				if elevator.Orders[elevator.CurrentFloor][button] {
 					elevator.Orders[elevator.CurrentFloor][button] = false
-					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: datatypes.ButtonType(button)}
+					completedReqChan <- datatypes.ButtonEvent{Floor: elevator.CurrentFloor, Button: elevio.ButtonType(button)}
 					cleared = true
 				}
 			}
@@ -162,8 +162,8 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				elevio.SetDoorOpenLamp(false)
 
 				if !requests.RequestsAbove(elevator) && !requests.RequestsBelow(elevator) && !requests.RequestsHere(elevator) {
-					elevator.State = datatypes.Idle
-					elevator.Direction = datatypes.DIR_STOP
+					elevator.State = config.Idle
+					elevator.Direction = config.DIR_STOP
 				} else {
 					elevator.Direction, elevator.State = requests.ChooseNewDirAndBeh(elevator)
 					fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
@@ -171,9 +171,9 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 				}
 
 				switch elevator.State {
-				case datatypes.DoorOpen:
+				case config.DoorOpen:
 					elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
-				case datatypes.Moving:
+				case config.Moving:
 					elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 					elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 				}
@@ -183,11 +183,11 @@ func RunElevFSM(reqChan <-chan [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool, co
 			fmt.Printf("FSM: Current State: %v | Floor: %d | Direction: %v\n", elevator.State, elevator.CurrentFloor, elevator.Direction)
 
 			switch elevator.State {
-			case datatypes.DoorOpen:
+			case config.DoorOpen:
 				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
-			case datatypes.Idle:
+			case config.Idle:
 				elevio.SetDoorOpenLamp(false)
-			case datatypes.Moving:
+			case config.Moving:
 				elevio.SetDoorOpenLamp(false)
 				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))

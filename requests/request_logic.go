@@ -2,14 +2,8 @@ package requests
 
 import (
 	"fmt"
-	"project/datatypes"
 	"project/config"
-)
-
-
-const (
-	N_FLOORS  = config.N_FLOORS
-	N_BUTTONS = datatypes.N_BUTTONS
+	"project/datatypes"
 )
 
 func RequestsAbove(elevator datatypes.Elevator) bool {
@@ -22,7 +16,6 @@ func RequestsAbove(elevator datatypes.Elevator) bool {
 	}
 	return false
 }
-
 
 func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
 	for f := 0; f < elevator.CurrentFloor; f++ {
@@ -37,7 +30,7 @@ func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/fa
 
 func RequestsHere(elevator datatypes.Elevator) bool {
 	fmt.Println("RequestsHere check at floor", elevator.CurrentFloor, "orders:", elevator.Orders[elevator.CurrentFloor])
-	for b := 0; b < datatypes.N_BUTTONS; b++ {
+	for b := 0; b < config.N_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
 			return true
 		}
@@ -46,7 +39,7 @@ func RequestsHere(elevator datatypes.Elevator) bool {
 }
 
 func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
-	for b := 0; b < datatypes.N_BUTTONS; b++ {
+	for b := 0; b < config.N_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
 			return datatypes.ButtonType(b)
 		}
@@ -55,56 +48,55 @@ func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
 	return datatypes.BT_CAB
 }
 
-func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datatypes.ElevBehaviour) {
+func ChooseNewDirAndBeh(elevator datatypes.Elevator) (config.Direction, config.ElevBehaviour) {
 	if !RequestsAbove(elevator) && !RequestsBelow(elevator) && !RequestsHere(elevator) {
-		return datatypes.DIR_STOP, datatypes.Idle
+		return config.DIR_STOP, config.Idle
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_DOWN, datatypes.DoorOpen
+			return config.DIR_DOWN, config.DoorOpen
 		} else if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else if RequestsHere(elevator) {
-			return datatypes.DIR_UP, datatypes.DoorOpen
+			return config.DIR_UP, config.DoorOpen
 		} else if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		if RequestsHere(elevator) {
 			switch getReqTypeHere(elevator) {
 			case datatypes.BT_HallUP:
-				return datatypes.DIR_UP, datatypes.DoorOpen
+				return config.DIR_UP, config.DoorOpen
 			case datatypes.BT_HallDOWN:
-				return datatypes.DIR_DOWN, datatypes.DoorOpen
+				return config.DIR_DOWN, config.DoorOpen
 			case datatypes.BT_CAB:
-				return datatypes.DIR_STOP, datatypes.DoorOpen
+				return config.DIR_STOP, config.DoorOpen
 			}
 		} else if RequestsAbove(elevator) {
-			return datatypes.DIR_UP, datatypes.Moving
+			return config.DIR_UP, config.Moving
 		} else if RequestsBelow(elevator) {
-			return datatypes.DIR_DOWN, datatypes.Moving
+			return config.DIR_DOWN, config.Moving
 		} else {
-			return datatypes.DIR_STOP, datatypes.Idle
+			return config.DIR_STOP, config.Idle
 		}
 	}
 
 	fmt.Println("Debug: Choosing Direction. Orders:", elevator.Orders, "Current Floor:", elevator.CurrentFloor)
-	return datatypes.DIR_STOP, datatypes.Idle
+	return config.DIR_STOP, config.Idle
 }
-
 
 func ShouldStop(elevator datatypes.Elevator) bool {
 	floor := elevator.CurrentFloor
@@ -120,7 +112,7 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 	)
 
 	switch elevator.Direction {
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		if elevator.Orders[floor][datatypes.BT_HallUP] ||
 			elevator.Orders[floor][datatypes.BT_CAB] {
 			return true
@@ -130,7 +122,7 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 			return true
 		}
 
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		if elevator.Orders[floor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[floor][datatypes.BT_CAB] {
 			return true
@@ -139,7 +131,7 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 			return true
 		}
 
-	case datatypes.DIR_STOP:
+	case config.DIR_STOP:
 		return elevator.Orders[floor][datatypes.BT_HallUP] ||
 			elevator.Orders[floor][datatypes.BT_HallDOWN] ||
 			elevator.Orders[floor][datatypes.BT_CAB]
@@ -147,9 +139,6 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 
 	return false
 }
-
-
-
 
 func CanClearCab(elevator datatypes.Elevator) bool {
 	return elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB]
@@ -161,9 +150,9 @@ func CanClearHallUp(elevator datatypes.Elevator) bool {
 		return false
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_UP, datatypes.DIR_STOP:
+	case config.DIR_UP, config.DIR_STOP:
 		return true
-	case datatypes.DIR_DOWN:
+	case config.DIR_DOWN:
 		return !RequestsBelow(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallDOWN]
 	}
 	return false
@@ -175,23 +164,22 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 		return false
 	}
 	switch elevator.Direction {
-	case datatypes.DIR_DOWN, datatypes.DIR_STOP:
+	case config.DIR_DOWN, config.DIR_STOP:
 		return true
-	case datatypes.DIR_UP:
+	case config.DIR_UP:
 		return !RequestsAbove(elevator) && !elevator.Orders[currentFloor][datatypes.BT_HallUP]
 	}
 	return false
 }
 
-
-func MergeOrders(oldOrders, newOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
-    for f := 0; f < datatypes.N_FLOORS; f++ {
-        for b := 0; b < datatypes.N_BUTTONS; b++ {
-            // If newOrders is true, keep it true
-            if newOrders[f][b] {
-                oldOrders[f][b] = true
-            }
-        }
-    }
-    return oldOrders
+func MergeOrders(oldOrders, newOrders [config.N_FLOORS][config.N_BUTTONS]bool) [config.N_FLOORS][config.N_BUTTONS]bool {
+	for f := 0; f < config.N_FLOORS; f++ {
+		for b := 0; b < config.N_BUTTONS; b++ {
+			// If newOrders is true, keep it true
+			if newOrders[f][b] {
+				oldOrders[f][b] = true
+			}
+		}
+	}
+	return oldOrders
 }
