@@ -10,6 +10,8 @@ import (
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
 	"time"
+	"encoding/json"
+	"os"
 )
 
 const (
@@ -48,13 +50,19 @@ func RequestControlLoop(
 	isNetworkConnected := false
 
 	hallRequests := [datatypes.N_FLOORS][datatypes.N_HALL_BUTTONS]datatypes.RequestType{}
-	allCabRequests := make(map[string][datatypes.N_FLOORS]datatypes.RequestType)
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
+	allCabRequests := make(map[string][datatypes.N_FLOORS]datatypes.RequestType)
 
 	// Local elevator info
-	allCabRequests[localID] = [datatypes.N_FLOORS]datatypes.RequestType{}
 	updatedInfoElevs[localID] = elevator_control.GetInfoElev()
-
+	if loaded, err := LoadCabCalls(localID); err == nil {
+		allCabRequests[localID] = loaded
+		fmt.Println("Restored cab calls for", localID)
+	} else {
+		allCabRequests[localID] = [datatypes.N_FLOORS]datatypes.RequestType{}
+	}
+	
+	
 	for {
 		select {
 
@@ -88,6 +96,8 @@ func RequestControlLoop(
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
+				SaveCabCalls(localID, allCabRequests)
+
 			} else {
 				if !isNetworkConnected {
 					fmt.Println("Network not connected; ignoring hall request")
@@ -120,7 +130,8 @@ func RequestControlLoop(
 					localCabReqs := allCabRequests[localID]
 					localCabReqs[btn.Floor] = request
 					allCabRequests[localID] = localCabReqs
-				} else {
+					SaveCabCalls(localID, allCabRequests)
+					} else {
 					fmt.Printf("ERROR: Invalid CAB button event: Floor=%d\n", btn.Floor)
 				}
 			} else {
@@ -162,7 +173,8 @@ func RequestControlLoop(
 				localCabReqs := allCabRequests[localID]
 				localCabReqs[btn.Floor] = request
 				allCabRequests[localID] = localCabReqs
-			} else {
+				SaveCabCalls(localID, allCabRequests)
+				} else {
 				hallRequests[btn.Floor][btn.Button] = request
 			}
 
@@ -379,4 +391,22 @@ func contains(list []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func SaveCabCalls(localID string, allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType) error {
+	data, err := json.Marshal(allCabRequests[localID])
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(fmt.Sprintf("cab_calls_%s.json", localID), data, 0644)
+}
+
+func LoadCabCalls(localID string) ([datatypes.N_FLOORS]datatypes.RequestType, error) {
+	var calls [datatypes.N_FLOORS]datatypes.RequestType
+	data, err := os.ReadFile(fmt.Sprintf("cab_calls_%s.json", localID))
+	if err != nil {
+		return calls, err
+	}
+	err = json.Unmarshal(data, &calls)
+	return calls, err
 }

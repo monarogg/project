@@ -234,9 +234,9 @@ func RequestAssigner(
 	for f := 0; f < config.N_FLOORS; f++ {
 		for b := 0; b < config.N_HALL_BUTTONS; b++ {
 			req := hallRequests[f][b]
-			if req.State == datatypes.Unassigned && isActiveRequest(req) {
+			if req.State == datatypes.Unassigned && isActiveRequest(req) && isLowestIDInAwareList(localID, req.AwareList) {
 				hallRequestsBool[f][b] = true
-			}
+			}						
 		}
 	}
 
@@ -332,3 +332,13 @@ func contains(list []string, item string) bool {
 	}
 	return false
 }
+
+func isLowestIDInAwareList(localID string, awareList []string) bool {
+	for _, id := range awareList {
+		if id < localID {
+			return false
+		}
+	}
+	return true
+}
+
