@@ -31,7 +31,7 @@ type NetworkMsg struct {
 	Behavior           ElevBehaviour
 	Direction          elevio.MotorDirection
 	Floor              int
-	SenderHallRequests [N_FLOORS][N_HALL_BUTTONS]RequestType
-	AllCabRequests     map[string][N_FLOORS]RequestType
-	DebugLog		   string
+	SenderHallRequests [NUM_FLOORS][NUM_HALL_BUTTONS]RequestType
+	AllCabRequests     map[string][NUM_FLOORS]RequestType
+	DebugLog           string
 }

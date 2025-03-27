@@ -2,18 +2,12 @@ package requests
 
 import (
 	"fmt"
-	"project/datatypes"
 	"project/config"
-)
-
-
-const (
-	N_FLOORS  = config.N_FLOORS
-	N_BUTTONS = datatypes.N_BUTTONS
+	"project/datatypes"
 )
 
 func RequestsAbove(elevator datatypes.Elevator) bool {
-	for f := elevator.CurrentFloor + 1; f < config.N_FLOORS; f++ {
+	for f := elevator.CurrentFloor + 1; f < config.NUM_FLOORS; f++ {
 		for _, order := range elevator.Orders[f] {
 			if order {
 				return true
@@ -22,7 +16,6 @@ func RequestsAbove(elevator datatypes.Elevator) bool {
 	}
 	return false
 }
-
 
 func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/false om det er noen aktive orders i etasjer under
 	for f := 0; f < elevator.CurrentFloor; f++ {
@@ -37,7 +30,7 @@ func RequestsBelow(elevator datatypes.Elevator) bool { // skal returnere true/fa
 
 func RequestsHere(elevator datatypes.Elevator) bool {
 	fmt.Println("RequestsHere check at floor", elevator.CurrentFloor, "orders:", elevator.Orders[elevator.CurrentFloor])
-	for b := 0; b < datatypes.N_BUTTONS; b++ {
+	for b := 0; b < datatypes.NUM_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
 			return true
 		}
@@ -46,7 +39,7 @@ func RequestsHere(elevator datatypes.Elevator) bool {
 }
 
 func getReqTypeHere(elevator datatypes.Elevator) datatypes.ButtonType {
-	for b := 0; b < datatypes.N_BUTTONS; b++ {
+	for b := 0; b < datatypes.NUM_BUTTONS; b++ {
 		if elevator.Orders[elevator.CurrentFloor][b] {
 			return datatypes.ButtonType(b)
 		}
@@ -105,7 +98,6 @@ func ChooseNewDirAndBeh(elevator datatypes.Elevator) (datatypes.Direction, datat
 	return datatypes.DIR_STOP, datatypes.Idle
 }
 
-
 func ShouldStop(elevator datatypes.Elevator) bool {
 	floor := elevator.CurrentFloor
 
@@ -148,9 +140,6 @@ func ShouldStop(elevator datatypes.Elevator) bool {
 	return false
 }
 
-
-
-
 func CanClearCab(elevator datatypes.Elevator) bool {
 	return elevator.Orders[elevator.CurrentFloor][datatypes.BT_CAB]
 }
@@ -183,15 +172,14 @@ func CanClearHallDown(elevator datatypes.Elevator) bool {
 	return false
 }
 
-
-func MergeOrders(oldOrders, newOrders [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool) [datatypes.N_FLOORS][datatypes.N_BUTTONS]bool {
-    for f := 0; f < datatypes.N_FLOORS; f++ {
-        for b := 0; b < datatypes.N_BUTTONS; b++ {
-            // If newOrders is true, keep it true
-            if newOrders[f][b] {
-                oldOrders[f][b] = true
-            }
-        }
-    }
-    return oldOrders
+func MergeOrders(oldOrders, newOrders [datatypes.NUM_FLOORS][datatypes.NUM_BUTTONS]bool) [datatypes.NUM_FLOORS][datatypes.NUM_BUTTONS]bool {
+	for f := 0; f < datatypes.NUM_FLOORS; f++ {
+		for b := 0; b < datatypes.NUM_BUTTONS; b++ {
+			// If newOrders is true, keep it true
+			if newOrders[f][b] {
+				oldOrders[f][b] = true
+			}
+		}
+	}
+	return oldOrders
 }

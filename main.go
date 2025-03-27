@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"project/config"
 	"project/datatypes"
 	"project/elevio"
 	"project/fsm"
 	"project/requests"
-	"project/config"
 )
 
 func main() {
@@ -17,20 +17,20 @@ func main() {
 	flag.Parse()
 
 	if *idFlag == "" {
-		fmt.Println("Error: -id must be provided")
+		fmt.Println("Error: ID flag is required, eg. --id=Elev1")
 		return
 	}
 
 	myID := *idFlag
 	port := *portFlag
 
-	elevio.Init("localhost:"+port, config.N_FLOORS)
+	elevio.Init("localhost:"+port, config.NUM_FLOORS)
 
-	requestsCh := make(chan [config.N_FLOORS][config.N_BUTTONS]bool)
-	completedRequestCh := make(chan datatypes.ButtonEvent)
+	requestsChan := make(chan [config.NUM_FLOORS][config.NUM_BUTTONS]bool)
+	completedRequestChan := make(chan datatypes.ButtonEvent)
 
-	go fsm.RunElevFSM(requestsCh, completedRequestCh)
-	go requests.RequestControlLoop(myID, requestsCh, completedRequestCh)
+	go fsm.RunElevFSM(requestsChan, completedRequestChan)
+	go requests.DistributedRequestLoop(myID, requestsChan, completedRequestChan)
 
 	select {}
 }

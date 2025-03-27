@@ -1,10 +1,10 @@
 package elevator_control
 
 import (
+	"project/config"
 	"project/datatypes"
 	"project/elevio"
 	"time"
-	"project/config"
 )
 
 var sharedInfoElevs datatypes.ElevSharedInfo
@@ -25,7 +25,7 @@ func GetInfoElev() datatypes.ElevatorInfo {
 // oppdaterer info om heis
 func UpdateInfoElev(elevator datatypes.Elevator) {
 	if (elevator.CurrentFloor == 0 && elevator.Direction == datatypes.DIR_DOWN) ||
-	   (elevator.CurrentFloor == config.N_FLOORS-1 && elevator.Direction == datatypes.DIR_UP) {
+		(elevator.CurrentFloor == config.NUM_FLOORS-1 && elevator.Direction == datatypes.DIR_UP) {
 		elevator.Direction = datatypes.DIR_STOP
 		if elevator.State == datatypes.Moving {
 			elevator.State = datatypes.Idle
@@ -40,8 +40,6 @@ func UpdateInfoElev(elevator datatypes.Elevator) {
 	sharedInfoElevs.CurrentFloor = elevator.CurrentFloor
 }
 
-
-
 // endrer tilgjengelighet til heisen basert på val
 func SetElevAvailability(val bool) {
 	sharedInfoElevs.Mutex.Lock()
@@ -54,8 +52,8 @@ func SetElevAvailability(val bool) {
 func InitElevator() datatypes.Elevator {
 	elevio.SetDoorOpenLamp(false)
 
-	for f := 0; f < config.N_FLOORS; f++ {
-		for b := 0; b < config.N_BUTTONS; b++ {
+	for f := 0; f < config.NUM_FLOORS; f++ {
+		for b := 0; b < config.NUM_BUTTONS; b++ {
 			elevio.SetButtonLamp(elevio.ButtonType(b), f, false)
 		}
 	}
@@ -73,7 +71,7 @@ func InitElevator() datatypes.Elevator {
 		CurrentFloor: currentFloor,
 		Direction:    datatypes.DIR_STOP,
 		State:        datatypes.Idle,
-		Orders:       [config.N_FLOORS][config.N_BUTTONS]bool{},
+		Orders:       [config.NUM_FLOORS][config.NUM_BUTTONS]bool{},
 	}
 }
 
@@ -101,7 +99,7 @@ func DirConv(dir datatypes.Direction) elevio.MotorDirection {
 	}
 	return elevio.MotorDirection(datatypes.MD_STOP)
 }
-func OrdersChanged(old, new [config.N_FLOORS][config.N_BUTTONS]bool) bool {
+func OrdersChanged(old, new [config.NUM_FLOORS][config.NUM_BUTTONS]bool) bool {
 	for i := range old {
 		for j := range old[i] {
 			if old[i][j] != new[i][j] {

@@ -1,6 +1,6 @@
 package requests
 
-// Helper functions for main_request
+// Helper functions for maiNUM_request
 
 import (
 	"project/datatypes"
@@ -57,25 +57,25 @@ func canAcceptRequest(localReq, incomingReq datatypes.RequestType) bool {
 
 // addIfMissing returns a new awareList that includes ID (if not already present).
 func AddIfMissing(awareList []string, ID string) []string {
-    for _, val := range awareList {
-        if val == ID {
-            return awareList
-        }
-    }
-    return append(awareList, ID)
+	for _, val := range awareList {
+		if val == ID {
+			return awareList
+		}
+	}
+	return append(awareList, ID)
 }
 
 func IsContainedIn(requiredSet, referenceSet []string) bool {
-    refMap := make(map[string]struct{}, len(referenceSet))
-    for _, elem := range referenceSet {
-        refMap[elem] = struct{}{}
-    }
-    for _, elem := range requiredSet {
-        if _, ok := refMap[elem]; !ok {
-            return false
-        }
-    }
-    return true
+	refMap := make(map[string]struct{}, len(referenceSet))
+	for _, elem := range referenceSet {
+		refMap[elem] = struct{}{}
+	}
+	for _, elem := range requiredSet {
+		if _, ok := refMap[elem]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func IsSoleAssignee(req datatypes.RequestType, localID string, peerList []string) bool {
@@ -89,6 +89,3 @@ func IsSoleAssignee(req datatypes.RequestType, localID string, peerList []string
 	}
 	return count == 1 && contains(req.AwareList, localID)
 }
-
-
-

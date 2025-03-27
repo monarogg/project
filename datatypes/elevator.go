@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-const N_FLOORS = 4
-const N_BUTTONS = 3
-const N_HALL_BUTTONS = 2
+const NUM_FLOORS = 4
+const NUM_BUTTONS = 3
+const NUM_HALL_BUTTONS = 2
 
 type ElevBehaviour int
 
@@ -30,7 +30,7 @@ type Elevator struct {
 	CurrentFloor int
 	Direction    Direction
 	State        ElevBehaviour
-	Orders       [config.N_FLOORS][config.N_BUTTONS]bool
+	Orders       [config.NUM_FLOORS][config.NUM_BUTTONS]bool
 	Config       ElevatorConfig
 	StopActive   bool
 }
