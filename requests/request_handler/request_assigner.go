@@ -198,7 +198,6 @@ import (
 	"os/exec"
 	"project/config"
 	"project/datatypes"
-	"os"
 )
 
 type HRAElevState struct {
@@ -323,30 +322,4 @@ func behToS(beh datatypes.ElevBehaviour) string {
 
 func isActiveRequest(r datatypes.RequestType) bool {
 	return len(r.AwareList) > 0
-}
-
-func contains(list []string, item string) bool {
-	for _, v := range list {
-		if v == item {
-			return true
-		}
-	}
-	return false
-}
-func SaveCabCalls(localID string, allCabRequests map[string][datatypes.N_FLOORS]datatypes.RequestType) error {
-	data, err := json.Marshal(allCabRequests[localID])
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(fmt.Sprintf("cab_calls_%s.json", localID), data, 0644)
-}
-
-func LoadCabCalls(localID string) ([datatypes.N_FLOORS]datatypes.RequestType, error) {
-	var calls [datatypes.N_FLOORS]datatypes.RequestType
-	data, err := os.ReadFile(fmt.Sprintf("cab_calls_%s.json", localID))
-	if err != nil {
-		return calls, err
-	}
-	err = json.Unmarshal(data, &calls)
-	return calls, err
 }
