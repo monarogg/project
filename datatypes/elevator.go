@@ -15,14 +15,14 @@ type Elevator struct {
 	StopActive   bool
 }
 
+type ElevatorConfig struct {
+	DoorOpenDuration time.Duration
+}
+
 type ElevSharedInfo struct {
 	Available    bool
 	Behaviour    config.ElevBehaviour
 	Direction    config.Direction
 	CurrentFloor int
 	Mutex        sync.RWMutex
-}
-
-type ElevatorConfig struct {
-	DoorOpenDuration time.Duration
 }

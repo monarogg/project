@@ -6,14 +6,10 @@ const (
 	N_FLOORS       = 4
 	N_BUTTONS      = 3
 	N_HALL_BUTTONS = 2
-)
 
-const (
 	DOOR_OPEN_DURATION = 3
 	MOVEMENT_TIMEOUT   = 4
-)
 
-const (
 	PEER_PORT                   = 30060
 	MSG_PORT                    = 30061
 	STATUS_UPDATE_INTERVAL      = 200 * time.Millisecond
@@ -42,12 +38,4 @@ const (
 	Unassigned RequestState = 0
 	Assigned   RequestState = 1
 	Completed  RequestState = 2
-)
-
-type MotorDirection int
-
-const (
-	MD_UP   MotorDirection = 1
-	MD_DOWN MotorDirection = -1
-	MD_STOP MotorDirection = 0
 )

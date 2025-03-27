@@ -16,7 +16,7 @@ func main() {
 	flag.Parse()
 
 	if *idFlag == "" {
-		fmt.Println("Error: -id must be provided")
+		fmt.Println("Error: ID flag is required, eg. --id=Elev1")
 		return
 	}
 
@@ -25,11 +25,11 @@ func main() {
 
 	elevio.Init("localhost:"+port, config.N_FLOORS)
 
-	requestsCh := make(chan [config.N_FLOORS][config.N_BUTTONS]bool)
-	completedRequestCh := make(chan elevio.ButtonEvent)
+	requestsChan := make(chan [config.N_FLOORS][config.N_BUTTONS]bool)
+	completedRequestChan := make(chan elevio.ButtonEvent)
 
-	go fsm.RunElevFSM(requestsCh, completedRequestCh)
-	go requests.DistributedRequestLoop(myID, requestsCh, completedRequestCh)
+	go fsm.RunElevFSM(requestsChan, completedRequestChan)
+	go requests.DistributedRequestLoop(myID, requestsChan, completedRequestChan)
 
 	select {}
 }

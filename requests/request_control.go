@@ -21,19 +21,19 @@ func DistributedRequestLoop(
 ) {
 	fmt.Println("=== DistributedRequestLoop startet, ny versjon ===")
 
-	// Listen for button events
-	buttenEventChan := make(chan elevio.ButtonEvent)
-	go elevio.PollButtons(buttenEventChan)
+	// Button polling
+	buttonEventChan := make(chan elevio.ButtonEvent)
+	go elevio.PollButtons(buttonEventChan)
 
 	// Network
-	sendMessageChan := make(chan datatypes.NetworkMsg)
-	receiveMessageChan := make(chan datatypes.NetworkMsg)
+	sendNetworkMsgChan := make(chan datatypes.NetworkMsg)
+	receiveNetworkMsgChan := make(chan datatypes.NetworkMsg)
 	peerUpdateChan := make(chan peers.PeerUpdate)
 
 	go peers.Receiver(config.PEER_PORT, peerUpdateChan)
 	go peers.Transmitter(config.PEER_PORT, localID, nil)
-	go bcast.Receiver(config.MSG_PORT, receiveMessageChan)
-	go bcast.Transmitter(config.MSG_PORT, sendMessageChan)
+	go bcast.Receiver(config.MSG_PORT, receiveNetworkMsgChan)
+	go bcast.Transmitter(config.MSG_PORT, sendNetworkMsgChan)
 
 	// Timers
 	broadcastTicker := time.NewTicker(config.STATUS_UPDATE_INTERVAL)
@@ -59,7 +59,7 @@ func DistributedRequestLoop(
 		select {
 
 		// --- Button Press Handling --- //
-		case btn := <-buttenEventChan:
+		case btn := <-buttonEventChan:
 			fmt.Printf("DEBUG: Mottatt knappetrykk: Floor=%d, Button=%d\n", btn.Floor, btn.Button)
 			var request datatypes.RequestType
 
@@ -191,7 +191,7 @@ func DistributedRequestLoop(
 				"| State:", newMsg.Behavior)
 
 			if isNetworkConnected {
-				sendMessageChan <- newMsg
+				sendNetworkMsgChan <- newMsg
 			}
 
 		case <-assignRequestTicker.C:
@@ -227,7 +227,7 @@ func DistributedRequestLoop(
 			}
 
 			if isNetworkConnected {
-				sendMessageChan <- datatypes.NetworkMsg{
+				sendNetworkMsgChan <- datatypes.NetworkMsg{
 					SenderID:           localID,
 					SenderHallRequests: hallRequests,
 				}
@@ -295,7 +295,7 @@ func DistributedRequestLoop(
 							unifiedOrders[f][b] = true
 							elevio.SetButtonLamp(elevio.ButtonType(b), f, true)
 							fmt.Printf("[ASSIGNED] Floor %d Button %d to %s\n", f, b, localID)
-							sendMessageChan <- datatypes.NetworkMsg{
+							sendNetworkMsgChan <- datatypes.NetworkMsg{
 								SenderID: localID,
 								DebugLog: fmt.Sprintf("[ORDER ASSIGNED] Floor %d Button %d -> %s", f, b, localID),
 							}
@@ -334,7 +334,7 @@ func DistributedRequestLoop(
 			}
 
 		// --- Receiving Network Messages --- //
-		case msg := <-receiveMessageChan:
+		case msg := <-receiveNetworkMsgChan:
 			if msg.SenderID == localID {
 				break
 			}

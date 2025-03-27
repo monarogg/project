@@ -35,7 +35,7 @@ func HRAmain(
 	fmt.Println("Mottatt peerList:", peerList)
 	fmt.Println("Mottatt localID:", localID)
 
-	hraPath := "./hall_request_assigner"
+	hraPath := "./cmd/hall_request_assigner"
 
 	// Prepare hall request input: Only unassigned and active
 	hallRequestsBool := [config.N_FLOORS][config.N_HALL_BUTTONS]bool{}
