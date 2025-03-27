@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"project/datatypes"
+	"project/config"
 	"project/elevio"
 	"project/fsm"
 	"project/requests"
-	"project/config"
 )
 
 func main() {
@@ -27,7 +26,7 @@ func main() {
 	elevio.Init("localhost:"+port, config.N_FLOORS)
 
 	requestsCh := make(chan [config.N_FLOORS][config.N_BUTTONS]bool)
-	completedRequestCh := make(chan datatypes.ButtonEvent)
+	completedRequestCh := make(chan elevio.ButtonEvent)
 
 	go fsm.RunElevFSM(requestsCh, completedRequestCh)
 	go requests.RequestControlLoop(myID, requestsCh, completedRequestCh)

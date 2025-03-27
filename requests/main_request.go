@@ -24,7 +24,7 @@ const (
 func RequestControlLoop(
 	localID string,
 	reqChan chan<- [config.N_FLOORS][config.N_BUTTONS]bool,
-	completedReqChan chan datatypes.ButtonEvent,
+	completedReqChan chan elevio.ButtonEvent,
 ) {
 	fmt.Println("=== RequestControlLoop startet, ny versjon ===")
 
