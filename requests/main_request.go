@@ -267,7 +267,7 @@ func RequestControlLoop(
 			}
 
 			// 2) Call request assigner
-			allAssignedOrders := request_handler.RequestAssigner(
+			allAssignedOrders := request_handler.HRA(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 			var assignedHallOrders [config.N_FLOORS][config.N_HALL_BUTTONS]bool
 			if len(peerList) == 1 && peerList[0] == localID {

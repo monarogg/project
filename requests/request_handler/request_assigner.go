@@ -216,7 +216,7 @@ type HRAInput struct {
 	States       map[string]HRAElevState                      `json:"states"`
 }
 
-func RequestAssigner(
+func HRA(
 	hallRequests [config.N_FLOORS][config.N_HALL_BUTTONS]datatypes.RequestType,
 	allCabRequests map[string][config.N_FLOORS]datatypes.RequestType,
 	updatedInfoElevs map[string]datatypes.ElevatorInfo,
