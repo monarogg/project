@@ -29,7 +29,7 @@ func main() {
 	completedRequestCh := make(chan elevio.ButtonEvent)
 
 	go fsm.RunElevFSM(requestsCh, completedRequestCh)
-	go requests.RequestControlLoop(myID, requestsCh, completedRequestCh)
+	go requests.DistributedRequestLoop(myID, requestsCh, completedRequestCh)
 
 	select {}
 }

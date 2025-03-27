@@ -1,5 +1,7 @@
 package config
 
+import "time"
+
 const (
 	N_FLOORS       = 4
 	N_BUTTONS      = 3
@@ -12,10 +14,10 @@ const (
 )
 
 const (
-	PEER_PORT                      = 30060
-	MSG_PORT                       = 30061
-	STATUS_UPDATE_INTERVAL_MS      = 200
-	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
+	PEER_PORT                   = 30060
+	MSG_PORT                    = 30061
+	STATUS_UPDATE_INTERVAL      = 200 * time.Millisecond
+	REQUEST_ASSIGNMENT_INTERVAL = 1000 * time.Millisecond
 )
 
 type ElevBehaviour int

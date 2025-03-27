@@ -14,19 +14,12 @@ import (
 	"time"
 )
 
-const (
-	PEER_PORT                      = 30060
-	MSG_PORT                       = 30061
-	STATUS_UPDATE_INTERVAL_MS      = 200
-	REQUEST_ASSIGNMENT_INTERVAL_MS = 1000
-)
-
-func RequestControlLoop(
+func DistributedRequestLoop(
 	localID string,
 	reqChan chan<- [config.N_FLOORS][config.N_BUTTONS]bool,
 	completedReqChan chan elevio.ButtonEvent,
 ) {
-	fmt.Println("=== RequestControlLoop startet, ny versjon ===")
+	fmt.Println("=== DistributedRequestLoop startet, ny versjon ===")
 
 	// Listen for button events
 	buttenEventChan := make(chan elevio.ButtonEvent)
@@ -37,14 +30,14 @@ func RequestControlLoop(
 	receiveMessageChan := make(chan datatypes.NetworkMsg)
 	peerUpdateChan := make(chan peers.PeerUpdate)
 
-	go peers.Receiver(PEER_PORT, peerUpdateChan)
-	go peers.Transmitter(PEER_PORT, localID, nil)
-	go bcast.Receiver(MSG_PORT, receiveMessageChan)
-	go bcast.Transmitter(MSG_PORT, sendMessageChan)
+	go peers.Receiver(config.PEER_PORT, peerUpdateChan)
+	go peers.Transmitter(config.PEER_PORT, localID, nil)
+	go bcast.Receiver(config.MSG_PORT, receiveMessageChan)
+	go bcast.Transmitter(config.MSG_PORT, sendMessageChan)
 
 	// Timers
-	broadcastTicker := time.NewTicker(STATUS_UPDATE_INTERVAL_MS * time.Millisecond)
-	assignRequestTicker := time.NewTicker(REQUEST_ASSIGNMENT_INTERVAL_MS * time.Millisecond)
+	broadcastTicker := time.NewTicker(config.STATUS_UPDATE_INTERVAL)
+	assignRequestTicker := time.NewTicker(config.REQUEST_ASSIGNMENT_INTERVAL)
 
 	peerList := []string{}
 	isNetworkConnected := false
@@ -267,7 +260,7 @@ func RequestControlLoop(
 			}
 
 			// 2) Call request assigner
-			allAssignedOrders := request_handler.HRA(
+			allAssignedOrders := request_handler.HRAmain(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 			var assignedHallOrders [config.N_FLOORS][config.N_HALL_BUTTONS]bool
 			if len(peerList) == 1 && peerList[0] == localID {

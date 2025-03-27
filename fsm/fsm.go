@@ -9,11 +9,6 @@ import (
 	"time"
 )
 
-const (
-	DOOR_OPEN_DURATION = 3
-	MOVEMENT_TIMEOUT   = 4
-)
-
 func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, completedReqChan chan<- elevio.ButtonEvent) {
 	floorSensorChan := make(chan int)
 	obstructionChan := make(chan bool)
@@ -52,9 +47,9 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 			switch elevator.State {
 			case config.DoorOpen:
 				elevio.SetDoorOpenLamp(true)
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			case config.Moving:
-				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+				elevator_control.RestartTimer(movementTimer, config.MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
 			elevator_control.UpdateInfoElev(elevator)
@@ -70,7 +65,7 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 				elevator_control.KillTimer(movementTimer)
 				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
 				elevator.Orders[newFloor][elevio.BT_HallUp] = false
@@ -88,7 +83,7 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 				elevator_control.KillTimer(movementTimer)
 				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 				elevator_control.UpdateInfoElev(elevator)
 
 				elevator.Orders[newFloor][elevio.BT_HallDown] = false
@@ -105,7 +100,7 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 				break
 			}
 
-			elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+			elevator_control.RestartTimer(movementTimer, config.MOVEMENT_TIMEOUT)
 			elevator_control.SetElevAvailability(true)
 
 			fmt.Printf("FSM: Checking ShouldStop at floor %d -> %v | Orders: %v\n", newFloor, requests.ShouldStop(elevator), elevator.Orders[newFloor])
@@ -129,7 +124,7 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 
 				elevator.State = config.DoorOpen
 				elevio.SetDoorOpenLamp(true)
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			}
 
 			elevator_control.UpdateInfoElev(elevator)
@@ -140,7 +135,7 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 				elevator_control.KillTimer(doorOpenTimer)
 			} else {
 				elevator_control.SetElevAvailability(true)
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			}
 
 		case <-doorOpenTimer.C:
@@ -171,9 +166,9 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 
 				switch elevator.State {
 				case config.DoorOpen:
-					elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+					elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 				case config.Moving:
-					elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+					elevator_control.RestartTimer(movementTimer, config.MOVEMENT_TIMEOUT)
 					elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 				}
 			}
@@ -183,12 +178,12 @@ func RunElevFSM(reqChan <-chan [config.N_FLOORS][config.N_BUTTONS]bool, complete
 
 			switch elevator.State {
 			case config.DoorOpen:
-				elevator_control.RestartTimer(doorOpenTimer, DOOR_OPEN_DURATION)
+				elevator_control.RestartTimer(doorOpenTimer, config.DOOR_OPEN_DURATION)
 			case config.Idle:
 				elevio.SetDoorOpenLamp(false)
 			case config.Moving:
 				elevio.SetDoorOpenLamp(false)
-				elevator_control.RestartTimer(movementTimer, MOVEMENT_TIMEOUT)
+				elevator_control.RestartTimer(movementTimer, config.MOVEMENT_TIMEOUT)
 				elevio.SetMotorDirection(elevator_control.DirConv(elevator.Direction))
 			}
 			elevator_control.UpdateInfoElev(elevator)
