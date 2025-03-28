@@ -11,6 +11,7 @@ import (
 	"project/network/bcast"
 	"project/network/peers"
 	request_handler "project/requests/request_handler"
+	"sort"
 	"time"
 )
 
@@ -43,10 +44,10 @@ func DistributedRequestLoop(
 	isNetworkConnected := false
 	latestPeerList := []string{}
 
-	var stablePeerCount = 0
+	var baselineEstablished = false
+	var stablePeerCount = -1
 	var stableTicks = 0
 	var reducedTicks = 0
-	var baselineEstablished = false
 
 	hallRequests := [datatypes.NUM_FLOORS][datatypes.NUM_HALL_BUTTONS]datatypes.RequestType{}
 	updatedInfoElevs := make(map[string]datatypes.ElevatorInfo)
@@ -75,13 +76,11 @@ func DistributedRequestLoop(
 
 				switch request.State {
 				case datatypes.Completed:
-					// Pressed again after completed => new request
 					request.State = datatypes.Assigned
 					request.AwareList = AddIfMissing(request.AwareList, localID)
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
 
 				case datatypes.Unassigned:
-					// Normal new cab call
 					request.State = datatypes.Assigned
 					request.AwareList = []string{localID}
 					elevio.SetButtonLamp(btn.Button, btn.Floor, true)
@@ -201,36 +200,6 @@ func DistributedRequestLoop(
 
 		case <-assignRequestTicker.C:
 			peerList = latestPeerList
-			for f := 0; f < datatypes.NUM_FLOORS; f++ {
-				for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
-					req := hallRequests[f][b]
-
-					// Remove unavailable elevators from AwareList
-					filtered := []string{}
-					for _, id := range req.AwareList {
-						if contains(peerList, id) {
-							filtered = append(filtered, id)
-						}
-					}
-					req.AwareList = filtered
-
-					// Demote if assigned but not solely to this elevator
-					if req.State == datatypes.Assigned {
-						active := 0
-						for _, id := range req.AwareList {
-							if contains(peerList, id) {
-								active++
-							}
-						}
-						if active > 1 {
-							fmt.Printf("[DEMOTED] Too many active assignees: Floor %d Button %d | AwareList=%v\n", f, b, req.AwareList)
-							req.State = datatypes.Unassigned
-						}
-					}
-
-					hallRequests[f][b] = req
-				}
-			}
 
 			if isNetworkConnected {
 				senNetworkMsgChan <- datatypes.NetworkMsg{
@@ -265,7 +234,32 @@ func DistributedRequestLoop(
 				}
 			}
 
-			// 2) Call request assigner
+			// Always clean up multi-assigned requests
+			for f := 0; f < datatypes.NUM_FLOORS; f++ {
+				for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
+					req := hallRequests[f][b]
+
+					// Keep only connected peers
+					var filtered []string
+					for _, id := range req.AwareList {
+						if contains(peerList, id) {
+							filtered = append(filtered, id)
+						}
+					}
+					req.AwareList = filtered
+
+					// DEMOTE if multiple active assignees
+					if req.State == datatypes.Assigned && len(req.AwareList) > 1 {
+						fmt.Printf("[DEMOTED] Too many active assignees: Floor %d Button %d | AwareList=%v\n",
+							f, b, req.AwareList)
+						req.State = datatypes.Unassigned
+					}
+
+					hallRequests[f][b] = req
+				}
+			}
+
+			// Call request assigner
 			allAssignedOrders := request_handler.HRAmain(
 				hallRequests, allCabRequests, updatedInfoElevs, peerList, localID)
 			var assignedHallOrders [datatypes.NUM_FLOORS][datatypes.NUM_HALL_BUTTONS]bool
@@ -273,37 +267,68 @@ func DistributedRequestLoop(
 
 			fmt.Printf("[TICK] peerCount=%d stableBaseline=%d stableTicks=%d reducedTicks=%d\n", currentCount, stablePeerCount, stableTicks, reducedTicks)
 
+			// --- Baseline tracking ---
 			if !baselineEstablished {
-				if currentCount == stablePeerCount {
-					stableTicks++
-				} else {
+				if stablePeerCount == -1 || currentCount != stablePeerCount {
 					stablePeerCount = currentCount
 					stableTicks = 1
+				} else {
+					stableTicks++
 				}
-				if stableTicks >= 30 {
+
+				if stableTicks >= 20 {
 					baselineEstablished = true
 					fmt.Printf("[BASELINE SET] Peer baseline established at %d\n", stablePeerCount)
 				}
 			} else {
-				if currentCount < stablePeerCount {
+				if currentCount == stablePeerCount {
+					stableTicks++
+					reducedTicks = 0
+				} else if currentCount < stablePeerCount {
 					reducedTicks++
+					stableTicks = 0
 				} else {
+					fmt.Println("[RESET] Peer count increased – restarting baseline tracking")
+					baselineEstablished = false
+					stablePeerCount = -1
+					stableTicks = 0
 					reducedTicks = 0
 				}
 			}
 
-			if reducedTicks >= 15 {
-				fmt.Println("Peer count dropped from baseline for 10 ticks – taking over hall orders")
-				for f := 0; f < datatypes.NUM_FLOORS; f++ {
-					for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
-						req := hallRequests[f][b]
-						if req.State != datatypes.Completed && len(req.AwareList) > 0 {
-							assignedHallOrders[f][b] = true
+			if reducedTicks >= 10 {
+				sort.Strings(peerList)
+				if peerList[0] == localID {
+					fmt.Printf("[TAKEOVER] Peer count dropped from baseline. %s forcibly reassigning\n", localID)
+
+					for f := 0; f < datatypes.NUM_FLOORS; f++ {
+						for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
+							req := hallRequests[f][b]
+
+							// Demote any multi-assigned requests
+							if req.State == datatypes.Assigned && len(req.AwareList) > 1 {
+								fmt.Printf("[DEMOTED] Too many active assignees: Floor %d Button %d | AwareList=%v\n",
+									f, b, req.AwareList)
+								req.State = datatypes.Unassigned
+								hallRequests[f][b] = req
+							}
+
+							// reassign unassigned requests that still have an AwareList
+							if req.State == datatypes.Unassigned && len(req.AwareList) > 0 {
+								fmt.Printf("[TAKEOVER] forcibly assigning unassigned request: Floor %d Button %d (was aware=%v)\n",
+									f, b, req.AwareList)
+								req.State = datatypes.Assigned
+								req.AwareList = []string{localID}
+								hallRequests[f][b] = req
+
+								assignedHallOrders[f][b] = true
+							}
 						}
 					}
+				} else {
+					fmt.Println("[TAKEOVER] Skipped – not the lowest ID elevator")
 				}
 			} else {
-				// Normal distributed assignment
 				fullAssignment := allAssignedOrders[localID]
 				for f := 0; f < datatypes.NUM_FLOORS; f++ {
 					for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
@@ -312,9 +337,10 @@ func DistributedRequestLoop(
 				}
 			}
 
+			// --- Merge assigned hall orders into unifiedOrders
 			var unifiedOrders [datatypes.NUM_FLOORS][datatypes.NUM_BUTTONS]bool
 
-			// 3) Apply only orders that this elevator is allowed to take
+			// Apply only orders that this elevator is allowed to take
 			for f := 0; f < datatypes.NUM_FLOORS; f++ {
 				for b := 0; b < datatypes.NUM_HALL_BUTTONS; b++ {
 					if assignedHallOrders[f][b] {
@@ -333,7 +359,7 @@ func DistributedRequestLoop(
 				}
 			}
 
-			// 4) Merge local cab calls
+			// Merge local cab calls
 			localCabReqs := allCabRequests[localID]
 			for f := 0; f < datatypes.NUM_FLOORS; f++ {
 				if localCabReqs[f].State == datatypes.Assigned {
@@ -345,7 +371,7 @@ func DistributedRequestLoop(
 			fmt.Println("RA: assignedHallOrders:", assignedHallOrders)
 			fmt.Println("RA: Sending unifiedOrders to FSM:", unifiedOrders)
 
-			// 5) Send orders to FSM
+			// Send orders to FSM
 			select {
 			case reqChan <- unifiedOrders:
 			default:
